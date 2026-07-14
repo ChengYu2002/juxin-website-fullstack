@@ -1,0 +1,22 @@
+# 依赖与构建产物(镜像内重新安装/编译)
+**/node_modules
+**/dist
+frontend/dist
+backend/dist
+
+# 密钥与本地环境
+.env
+backend/.env
+*.local
+
+# git / 编辑器 / 系统
+.git
+.gitignore
+**/.DS_Store
+.vscode
+.idea
+
+# 文档 / 脚本 / 存档(不需要进镜像,减小构建上下文)
+docs
+scripts
+README.md

@@ -1,0 +1,34 @@
+# 本地开发:  docker compose --profile dev up --build   (含本地 mongo 容器)
+# 仅跑应用:  docker compose up --build                  (连 .env 里的外部 MongoDB)
+#
+# 生产(Render)不使用本文件:Render 只读 Dockerfile 构建一个容器,
+# 数据库连 Atlas、密钥都在 Render 后台的环境变量里配置。
+
+services:
+  web:
+    build: .
+    ports:
+      - "3001:3001"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+    restart: unless-stopped
+
+  # 仅本地开发用的 MongoDB;加 --profile dev 才会启动。
+  # 生产请用 Atlas(把 .env 里 MONGODB_URI 指向 mongo 服务即可本地自包含:
+  #   MONGODB_URI=mongodb://mongo:27017/juxin )
+  mongo:
+    image: mongo:7
+    profiles: ["dev"]
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mongo-data:

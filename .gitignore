@@ -1,0 +1,26 @@
+# 依赖
+node_modules/
+**/node_modules/
+
+# 构建产物(由 Docker/CI 现编,不进 git)
+dist/
+**/dist/
+build/
+
+# ⚠️ 真密钥:永不进 git
+.env
+backend/.env
+.env.local
+*.local
+
+# 注意:frontend/.env.development 与 frontend/.env.production 只含公开的
+# VITE_ 变量(URL/开关),会被打包进浏览器,故不忽略、可入库。
+
+# 日志
+*.log
+npm-debug.log*
+
+# 系统 / 编辑器
+.DS_Store
+.vscode/
+.idea/

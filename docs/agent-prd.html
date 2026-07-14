@@ -1,0 +1,728 @@
+<title>聚鑫外贸售前 AI 助理 — Agent PRD</title>
+<style>
+  :root {
+    --bg: #F4F6F9;
+    --surface: #FFFFFF;
+    --surface-2: #EAEFF4;
+    --ink: #17222E;
+    --ink-soft: #46586A;
+    --muted: #78899A;
+    --line: #DBE2EA;
+    --line-strong: #C4CFDA;
+    --accent: #0E7C86;
+    --accent-ink: #0A5960;
+    --accent-soft: #E0F0F1;
+    --good: #2F7D5B;
+    --good-soft: #E2F1EA;
+    --warn: #9C6612;
+    --warn-soft: #F5ECD9;
+    --bad: #B0432B;
+    --bad-soft: #F6E5DF;
+    --font-sans: ui-sans-serif, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    --maxw: 880px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0D141B;
+      --surface: #131D26;
+      --surface-2: #1A2731;
+      --ink: #E7EDF3;
+      --ink-soft: #AAB9C7;
+      --muted: #748899;
+      --line: #253440;
+      --line-strong: #33475660;
+      --accent: #38C9D0;
+      --accent-ink: #8FE4E8;
+      --accent-soft: #0F3339;
+      --good: #55BC8A;
+      --good-soft: #123227;
+      --warn: #DBA646;
+      --warn-soft: #322715;
+      --bad: #E28062;
+      --bad-soft: #341E17;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #F4F6F9; --surface: #FFFFFF; --surface-2: #EAEFF4;
+    --ink: #17222E; --ink-soft: #46586A; --muted: #78899A;
+    --line: #DBE2EA; --line-strong: #C4CFDA;
+    --accent: #0E7C86; --accent-ink: #0A5960; --accent-soft: #E0F0F1;
+    --good: #2F7D5B; --good-soft: #E2F1EA;
+    --warn: #9C6612; --warn-soft: #F5ECD9;
+    --bad: #B0432B; --bad-soft: #F6E5DF;
+  }
+  :root[data-theme="dark"] {
+    --bg: #0D141B; --surface: #131D26; --surface-2: #1A2731;
+    --ink: #E7EDF3; --ink-soft: #AAB9C7; --muted: #748899;
+    --line: #253440; --line-strong: #33475660;
+    --accent: #38C9D0; --accent-ink: #8FE4E8; --accent-soft: #0F3339;
+    --good: #55BC8A; --good-soft: #123227;
+    --warn: #DBA646; --warn-soft: #322715;
+    --bad: #E28062; --bad-soft: #341E17;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 24px 96px; }
+
+  /* ---------- masthead ---------- */
+  .masthead {
+    padding: 56px 0 28px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 40px;
+  }
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent-ink);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .eyebrow::before {
+    content: "";
+    width: 26px; height: 2px;
+    background: var(--accent);
+    display: inline-block;
+  }
+  h1 {
+    font-size: clamp(28px, 5vw, 40px);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    margin: 16px 0 10px;
+    text-wrap: balance;
+    font-weight: 780;
+  }
+  .lede {
+    font-size: 18px;
+    color: var(--ink-soft);
+    max-width: 60ch;
+    margin: 0 0 24px;
+  }
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 10px;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+  }
+  .meta span {
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    padding: 4px 9px;
+    color: var(--ink-soft);
+  }
+  .meta b { color: var(--ink); font-weight: 600; }
+
+  /* ---------- TOC ---------- */
+  .toc {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 48px;
+  }
+  .toc h2 { font-size: 13px; margin: 0 0 12px; }
+  .toc ol {
+    margin: 0; padding: 0; list-style: none;
+    columns: 2; column-gap: 32px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+  }
+  .toc li {
+    padding: 3px 0;
+    break-inside: avoid;
+    color: var(--ink-soft);
+  }
+  .toc a { color: inherit; text-decoration: none; }
+  .toc a:hover { color: var(--accent); }
+  .toc .n { color: var(--muted); margin-right: 8px; }
+
+  /* ---------- sections ---------- */
+  section { margin: 0 0 52px; scroll-margin-top: 20px; }
+  h2.sec {
+    font-size: 22px;
+    letter-spacing: -0.01em;
+    margin: 0 0 6px;
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    font-weight: 720;
+  }
+  h2.sec .num {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .sec-note { color: var(--muted); font-size: 14px; margin: 0 0 20px; }
+  h3 { font-size: 16px; margin: 28px 0 10px; letter-spacing: -0.01em; }
+  p { margin: 0 0 14px; }
+  strong { font-weight: 650; color: var(--ink); }
+  a { color: var(--accent); }
+  code {
+    font-family: var(--font-mono);
+    font-size: 0.86em;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 1px 5px;
+  }
+
+  /* ---------- pills ---------- */
+  .pill {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 999px;
+    white-space: nowrap;
+    font-weight: 600;
+    display: inline-block;
+  }
+  .pill.must { background: var(--good-soft); color: var(--good); border: 1px solid color-mix(in srgb, var(--good) 30%, transparent); }
+  .pill.nice { background: var(--warn-soft); color: var(--warn); border: 1px solid color-mix(in srgb, var(--warn) 30%, transparent); }
+  .pill.no   { background: var(--bad-soft);  color: var(--bad);  border: 1px solid color-mix(in srgb, var(--bad) 30%, transparent); }
+  .pill.stretch { background: var(--accent-soft); color: var(--accent-ink); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; margin: 4px 0 8px; font-size: 13px; color: var(--ink-soft); align-items: center; }
+
+  /* ---------- tables ---------- */
+  .tbl-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; margin: 4px 0 8px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; min-width: 520px; }
+  th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  thead th {
+    background: var(--surface-2);
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    font-weight: 600;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: color-mix(in srgb, var(--accent) 5%, transparent); }
+  td.k { font-family: var(--font-mono); font-size: 13px; color: var(--ink); white-space: nowrap; }
+
+  /* ---------- callouts ---------- */
+  .callout {
+    border-left: 3px solid var(--accent);
+    background: var(--surface);
+    border-radius: 0 10px 10px 0;
+    padding: 14px 18px;
+    margin: 18px 0;
+    border-top: 1px solid var(--line);
+    border-right: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+  .callout.warnbox { border-left-color: var(--warn); }
+  .callout.badbox { border-left-color: var(--bad); }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout .tag {
+    font-family: var(--font-mono);
+    font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--accent-ink); font-weight: 600; display: block; margin-bottom: 4px;
+  }
+  .callout.warnbox .tag { color: var(--warn); }
+  .callout.badbox .tag { color: var(--bad); }
+
+  /* ---------- code block ---------- */
+  pre {
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 16px 18px;
+    overflow-x: auto;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.6;
+    margin: 12px 0;
+    color: var(--ink);
+  }
+  pre .c { color: var(--muted); }
+  pre .kw { color: var(--accent-ink); font-weight: 600; }
+
+  /* ---------- diagram frame ---------- */
+  .diagram {
+    overflow-x: auto;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 20px;
+    margin: 10px 0 8px;
+  }
+  .diagram svg { display: block; min-width: 640px; max-width: 100%; height: auto; margin: 0 auto; }
+  .cap { font-size: 12.5px; color: var(--muted); font-family: var(--font-mono); margin: 6px 2px 0; }
+
+  /* svg tokens */
+  .n-box { fill: var(--surface); stroke: var(--line-strong); stroke-width: 1.4; }
+  .n-box.acc { fill: var(--accent-soft); stroke: var(--accent); }
+  .n-box.warnn { fill: var(--warn-soft); stroke: var(--warn); }
+  .n-box.badn { fill: var(--bad-soft); stroke: var(--bad); }
+  .n-box.ext { fill: var(--surface-2); stroke: var(--line-strong); stroke-dasharray: 4 3; }
+  .svg-t { fill: var(--ink); font-family: var(--font-sans); font-size: 13px; font-weight: 600; }
+  .svg-s { fill: var(--ink-soft); font-family: var(--font-mono); font-size: 11px; }
+  .svg-lbl { fill: var(--accent-ink); font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.04em; }
+  .edge { stroke: var(--line-strong); stroke-width: 1.6; fill: none; }
+  .edge.acc { stroke: var(--accent); }
+  .arrowhead { fill: var(--line-strong); }
+  .arrowhead.acc { fill: var(--accent); }
+  .group-frame { fill: none; stroke: var(--line); stroke-width: 1.2; stroke-dasharray: 3 3; }
+  .group-t { fill: var(--muted); font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; }
+
+  /* ---------- timeline ---------- */
+  .timeline { display: flex; flex-direction: column; gap: 0; margin: 6px 0; }
+  .phase {
+    display: grid;
+    grid-template-columns: 64px 1fr;
+    gap: 18px;
+    padding: 18px 0;
+    border-top: 1px solid var(--line);
+  }
+  .phase:first-child { border-top: none; }
+  .phase .pn {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--accent);
+    padding-top: 2px;
+  }
+  .phase .pt { font-weight: 650; font-size: 15px; margin: 0 0 3px; }
+  .phase .pd { color: var(--ink-soft); font-size: 14px; margin: 0 0 8px; }
+  .phase .pmeta { display: flex; flex-wrap: wrap; gap: 8px; font-family: var(--font-mono); font-size: 11.5px; }
+  .phase .chip { background: var(--surface-2); border: 1px solid var(--line); border-radius: 5px; padding: 2px 8px; color: var(--ink-soft); }
+  .phase .chip.learn { color: var(--accent-ink); }
+
+  ul.tight { margin: 4px 0 14px; padding-left: 20px; }
+  ul.tight li { margin: 5px 0; }
+  ul.tight li::marker { color: var(--accent); }
+
+  hr.soft { border: none; border-top: 1px solid var(--line); margin: 40px 0; }
+
+  .foot { color: var(--muted); font-size: 13px; font-family: var(--font-mono); border-top: 1px solid var(--line); padding-top: 20px; margin-top: 48px; }
+
+  @media (max-width: 640px) {
+    .toc ol { columns: 1; }
+    .phase { grid-template-columns: 48px 1fr; gap: 12px; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="eyebrow">Product Requirements · Draft</div>
+    <h1>聚鑫外贸售前 AI 助理 (Agent)</h1>
+    <p class="lede">一个扎根真实产品库、能精确答规格、并把高意向访客沉淀为结构化询盘的 B2B 售前助理 —— 严格止步于报价/库存/交期之前。</p>
+    <div class="meta">
+      <span><b>项目</b> Juxin Manufacturing</span>
+      <span><b>版本</b> v0.1</span>
+      <span><b>状态</b> Draft</span>
+      <span><b>分支</b> dev-v3-agent</span>
+      <span><b>日期</b> 2026-07-13</span>
+    </div>
+  </header>
+
+  <nav class="toc" aria-label="目录">
+    <h2>目录</h2>
+    <ol>
+      <li><a href="#s1"><span class="n">01</span>背景与目标</a></li>
+      <li><a href="#s2"><span class="n">02</span>定位与非目标</a></li>
+      <li><a href="#s3"><span class="n">03</span>目标用户</a></li>
+      <li><a href="#s4"><span class="n">04</span>功能范围</a></li>
+      <li><a href="#s5"><span class="n">05</span>系统架构</a></li>
+      <li><a href="#s6"><span class="n">06</span>Agent 状态设计</a></li>
+      <li><a href="#s7"><span class="n">07</span>工具定义</a></li>
+      <li><a href="#s8"><span class="n">08</span>RAG 设计</a></li>
+      <li><a href="#s9"><span class="n">09</span>模型选型</a></li>
+      <li><a href="#s10"><span class="n">10</span>防幻觉与边界</a></li>
+      <li><a href="#s11"><span class="n">11</span>会话与记忆</a></li>
+      <li><a href="#s12"><span class="n">12</span>数据模型</a></li>
+      <li><a href="#s13"><span class="n">13</span>成功指标与评估</a></li>
+      <li><a href="#s14"><span class="n">14</span>开发里程碑</a></li>
+      <li><a href="#s15"><span class="n">15</span>技术栈与部署</a></li>
+      <li><a href="#s16"><span class="n">16</span>范围纪律</a></li>
+      <li><a href="#s17"><span class="n">17</span>面试价值映射</a></li>
+    </ol>
+  </nav>
+
+  <section id="s1">
+    <h2 class="sec"><span class="num">01</span>背景与目标</h2>
+    <p>聚鑫是一家外贸制造企业(购物手推车、多用途手推车、露营拖车、户外家具),核心业务链路是:<strong>访客提交询盘 → 邮件通知业务员 → 人工跟进</strong>。海外买家的常见问题高度结构化 —— MOQ、装箱量、集装箱装载、包装、能否改颜色/OEM —— 而这些答案<strong>恰好已存在产品库</strong>(<code>specs.containerLoad</code>、<code>moq</code>、<code>variants</code>…)。</p>
+    <p>目标:用一个售前 AI 助理把业务员重复回答的问题前置到官网自动答掉,并把高意向访客转化成一条<strong>更完整的结构化询盘</strong>,同时对超出能力边界的问题(报价/库存/交期)干净地转人工。</p>
+    <ul class="tight">
+      <li><strong>业务目标</strong> —— 降低业务员重复答疑负担;提升询盘质量与转化。</li>
+      <li><strong>工程目标</strong> —— 在真实业务系统中落地一个有状态、有工具调用、有 RAG 的 Agent。</li>
+    </ul>
+  </section>
+
+  <section id="s2">
+    <h2 class="sec"><span class="num">02</span>定位与非目标</h2>
+    <p class="sec-note">这是全文最重要的一节 —— 边界定义了"不像玩具"与"过度承诺"之间的线。</p>
+    <p><strong>定位:售前助理(pre-sales),不是成交客服。</strong> 它帮买家问清产品、做选型、并留资,不负责报价与交易。</p>
+    <div class="legend">
+      <span class="pill must">Must</span> 核心必做
+      <span class="pill nice">Nice</span> 有余力再做
+      <span class="pill stretch">Stretch</span> 前沿加分
+      <span class="pill no">Non-Goal</span> 明确不做
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>能力</th><th>处理方式</th><th></th></tr></thead>
+        <tbody>
+          <tr><td class="k">实时报价</td><td>库里无价格,B2B 价格靠谈 → 引导提交询盘,业务员报价</td><td><span class="pill no">Non-Goal</span></td></tr>
+          <tr><td class="k">实时库存</td><td>DB 不跟踪库存 → 转人工</td><td><span class="pill no">Non-Goal</span></td></tr>
+          <tr><td class="k">交期 / 运费计算</td><td>数据缺失,禁止编造 → 转人工</td><td><span class="pill no">Non-Goal</span></td></tr>
+          <tr><td class="k">下单 / 收款</td><td>超范围,不应由 AI 执行</td><td><span class="pill no">Non-Goal</span></td></tr>
+          <tr><td class="k">超出库字段的承诺</td><td>会幻觉 → prompt 约束"只复述工具/资料内容"</td><td><span class="pill no">Non-Goal</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout">
+      <span class="tag">措辞立场</span>
+      <p>对面试与用户,都说"<strong>一个非常适配 Agent 的真实业务底座 + 售前助理</strong>",不说"完整的销售 Agent"。边界立得住,才显得懂业务、懂 AI 的局限。</p>
+    </div>
+  </section>
+
+  <section id="s3">
+    <h2 class="sec"><span class="num">03</span>目标用户</h2>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>用户</th><th>特征</th><th>诉求</th></tr></thead>
+        <tbody>
+          <tr><td class="k">海外 B2B 买家</td><td>匿名、<strong>无账号</strong>、多语言、采购导向</td><td>快速问清规格/MOQ/装箱;低摩擦留资(不想注册)</td></tr>
+          <tr><td class="k">内部业务员</td><td>已有 admin 后台</td><td>拿到结构化询盘 + 能回看 Agent 对话做背景</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="s4">
+    <h2 class="sec"><span class="num">04</span>功能范围</h2>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>功能</th><th>说明</th><th>实现</th><th></th></tr></thead>
+        <tbody>
+          <tr><td class="k">产品规格问答</td><td>"JX-80SP 装箱量?"返回精确值,不幻觉</td><td>tool calling → 现有产品接口</td><td><span class="pill must">Must</span></td></tr>
+          <tr><td class="k">推荐 / 对比</td><td>"给超市推手推车" / "A 和 B 比一比"</td><td>tool calling → 列表查询</td><td><span class="pill must">Must</span></td></tr>
+          <tr><td class="k">防幻觉 + 转人工</td><td>越界问题干净拒绝并引导留资</td><td>system prompt + 分支</td><td><span class="pill must">Must</span></td></tr>
+          <tr><td class="k">对话记忆</td><td>多轮上下文</td><td>匿名 conversationId + 重发历史</td><td><span class="pill must">Must</span></td></tr>
+          <tr><td class="k">抓询盘(闭环)</td><td>收集 name/email/需求 → 结构化 inquiry 落库并邮件通知</td><td>tool calling → 现有 inquiry 系统</td><td><span class="pill must">Must</span></td></tr>
+          <tr><td class="k">多语言</td><td>买家用什么语言就用什么答</td><td>模型原生能力</td><td><span class="pill must">Must</span></td></tr>
+          <tr><td class="k">公司软信息问答</td><td>OEM/认证/工厂验厂等</td><td>RAG(Atlas Vector Search)</td><td><span class="pill nice">Nice</span></td></tr>
+          <tr><td class="k">后台对话日志</td><td>对话 + 工具调用记录,业务员可回看</td><td>Mongo + admin 后台</td><td><span class="pill nice">Nice</span></td></tr>
+          <tr><td class="k">小型评估集</td><td>20–30 条问答,能报准确率</td><td>eval 脚本</td><td><span class="pill nice">Nice</span></td></tr>
+          <tr><td class="k">工具经 MCP 暴露</td><td>工具封装成 MCP server</td><td>MCP SDK(独立服务)</td><td><span class="pill stretch">Stretch</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="s5">
+    <h2 class="sec"><span class="num">05</span>系统架构</h2>
+    <p class="sec-note">前端聊天气泡 → Agent 编排 → 工具层(包一层现有接口)→ 存储 / 知识 / 模型。数据库与图片走既有云服务。</p>
+    <div class="diagram">
+      <svg viewBox="0 0 860 470" role="img" aria-label="系统架构图">
+        <defs>
+          <marker id="ah" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path class="arrowhead" d="M0,0 L9,4.5 L0,9 Z"/></marker>
+          <marker id="aha" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path class="arrowhead acc" d="M0,0 L9,4.5 L0,9 Z"/></marker>
+        </defs>
+
+        <!-- frontend -->
+        <rect class="n-box" x="30" y="40" width="200" height="86" rx="10"/>
+        <text class="svg-lbl" x="46" y="62">FRONTEND · REACT</text>
+        <text class="svg-t" x="46" y="84">ChatWidget</text>
+        <text class="svg-s" x="46" y="103">messages[] · conversationId</text>
+        <text class="svg-s" x="46" y="118">POST /api/chat</text>
+
+        <!-- agent orchestration -->
+        <rect class="n-box acc" x="330" y="24" width="230" height="150" rx="10"/>
+        <text class="svg-lbl" x="348" y="46">AGENT · LANGGRAPH</text>
+        <text class="svg-t" x="348" y="70">编排循环</text>
+        <text class="svg-s" x="348" y="90">system prompt + 历史 + 工具</text>
+        <text class="svg-s" x="348" y="107">调模型 → 要工具? → 执行</text>
+        <text class="svg-s" x="348" y="124">→ 喂回 → 循环 → 回答</text>
+        <text class="svg-s" x="348" y="150">(独立服务 或 后端路由)</text>
+
+        <!-- tools -->
+        <rect class="n-box" x="330" y="212" width="230" height="96" rx="10"/>
+        <text class="svg-lbl" x="348" y="234">TOOLS 层</text>
+        <text class="svg-s" x="348" y="256">getProduct()</text>
+        <text class="svg-s" x="348" y="273">searchProducts()</text>
+        <text class="svg-s" x="348" y="290">createInquiry()</text>
+
+        <!-- model -->
+        <rect class="n-box" x="630" y="40" width="200" height="86" rx="10"/>
+        <text class="svg-lbl" x="646" y="62">MODEL(免费档)</text>
+        <text class="svg-t" x="646" y="84">Gemini / Groq</text>
+        <text class="svg-s" x="646" y="103">OpenAI 兼容 · 可切换</text>
+        <text class="svg-s" x="646" y="118">↔ 本地 Ollama</text>
+
+        <!-- knowledge / RAG -->
+        <rect class="n-box" x="630" y="212" width="200" height="96" rx="10"/>
+        <text class="svg-lbl" x="646" y="234">KNOWLEDGE · RAG</text>
+        <text class="svg-s" x="646" y="256">公司软信息切块</text>
+        <text class="svg-s" x="646" y="273">embedding + 检索</text>
+        <text class="svg-s" x="646" y="290">注入 prompt</text>
+
+        <!-- storage -->
+        <rect class="n-box ext" x="330" y="352" width="230" height="86" rx="10"/>
+        <text class="group-t" x="348" y="374">STORAGE / EXTERNAL</text>
+        <text class="svg-s" x="348" y="396">MongoDB Atlas</text>
+        <text class="svg-s" x="348" y="413">conversations · inquiry</text>
+        <text class="svg-s" x="348" y="430">Atlas Vector Search · OSS</text>
+
+        <!-- edges -->
+        <path class="edge" d="M230,83 L326,83" marker-end="url(#ah)"/>
+        <path class="edge acc" d="M560,99 L626,99" marker-end="url(#aha)"/>
+        <path class="edge acc" d="M445,174 L445,208" marker-end="url(#aha)"/>
+        <path class="edge acc" d="M560,260 L626,260" marker-end="url(#aha)"/>
+        <path class="edge" d="M445,308 L445,348" marker-end="url(#ah)"/>
+      </svg>
+    </div>
+    <p class="cap">图 1 · 系统架构。Tools 层是"给现有 controller 包一层给模型看的说明",不是新写业务逻辑。</p>
+  </section>
+
+  <section id="s6">
+    <h2 class="sec"><span class="num">06</span>Agent 状态设计</h2>
+    <p class="sec-note">分清三种"状态":UI 运行状态(前端 spinner)、对话数据状态(要 carry)、控制流状态(LangGraph 节点)。</p>
+
+    <h3>① 数据状态(跨轮次携带)</h3>
+    <pre><span class="c">// conversations 集合里一条会话的状态</span>
+{
+  conversationId,          <span class="c">// 匿名号牌(localStorage)</span>
+  messages: [...],         <span class="c">// 历史,喂回模型 = "记忆"</span>
+  collectedLead: {         <span class="c">// 边聊边攒,决定能否写询盘</span>
+    name?, email?, product?, quantity?, destination?
+  }
+}</pre>
+
+    <h3>② 控制流状态(LangGraph 状态图)</h3>
+    <div class="diagram">
+      <svg viewBox="0 0 860 430" role="img" aria-label="LangGraph 状态图">
+        <defs>
+          <marker id="ah2" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path class="arrowhead" d="M0,0 L9,4.5 L0,9 Z"/></marker>
+          <marker id="aha2" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path class="arrowhead acc" d="M0,0 L9,4.5 L0,9 Z"/></marker>
+        </defs>
+
+        <!-- START -->
+        <rect class="n-box" x="40" y="180" width="92" height="44" rx="22"/>
+        <text class="svg-t" x="66" y="207">START</text>
+
+        <!-- agent node -->
+        <rect class="n-box acc" x="200" y="160" width="180" height="84" rx="10"/>
+        <text class="svg-lbl" x="216" y="182">NODE · AGENT</text>
+        <text class="svg-t" x="216" y="205">LLM 决策</text>
+        <text class="svg-s" x="216" y="224">prompt + 工具 + 状态</text>
+
+        <!-- branches -->
+        <rect class="n-box" x="470" y="24" width="180" height="64" rx="10"/>
+        <text class="svg-lbl" x="486" y="46">查产品</text>
+        <text class="svg-s" x="486" y="66">tools 节点</text>
+        <text class="svg-s" x="486" y="82">查完循环回 agent</text>
+
+        <rect class="n-box warnn" x="470" y="112" width="180" height="60" rx="10"/>
+        <text class="svg-lbl" x="486" y="134" style="fill:var(--warn)">拒绝 / 转人工</text>
+        <text class="svg-s" x="486" y="154">越界 · prompt 驱动</text>
+
+        <rect class="n-box" x="470" y="196" width="180" height="64" rx="10"/>
+        <text class="svg-lbl" x="486" y="218">继续追问</text>
+        <text class="svg-s" x="486" y="238">信息不足时</text>
+        <text class="svg-s" x="486" y="254">回 agent 收集</text>
+
+        <rect class="n-box acc" x="470" y="284" width="180" height="72" rx="10"/>
+        <text class="svg-lbl" x="486" y="306">写询盘</text>
+        <text class="svg-s" x="486" y="326">create_inquiry 节点</text>
+        <text class="svg-s" x="486" y="343">lead 满足 → 给业务员发邮件</text>
+
+        <!-- END -->
+        <rect class="n-box" x="730" y="300" width="92" height="44" rx="22"/>
+        <text class="svg-t" x="760" y="327">END</text>
+
+        <!-- edges -->
+        <path class="edge" d="M132,202 L196,202" marker-end="url(#ah2)"/>
+        <path class="edge acc" d="M380,185 C430,150 430,90 466,66" marker-end="url(#aha2)"/>
+        <path class="edge" d="M470,142 C440,150 420,175 384,192" marker-end="url(#ah2)"/>
+        <path class="edge" d="M380,215 C420,222 430,226 466,228" marker-end="url(#ah2)"/>
+        <path class="edge acc" d="M380,232 C430,280 430,310 466,318" marker-end="url(#aha2)"/>
+        <path class="edge" d="M650,66 C700,80 690,150 384,200" marker-end="url(#ah2)"/>
+        <path class="edge acc" d="M650,320 L726,322" marker-end="url(#aha2)"/>
+      </svg>
+    </div>
+    <p class="cap">图 2 · LangGraph 状态图。只建"结构性"状态(有无 lead / 是否越界 / 是否在工具调用),对话措辞交给 LLM。</p>
+
+    <div class="callout warnbox">
+      <span class="tag">避坑</span>
+      <p>"查询中 / 回答中"<strong>不是 Agent 状态</strong>,是前端根据事件显示的 UI status,别建模进逻辑。状态别过度细分,否则 Agent 会僵、丢掉 LLM 的灵活性。</p>
+    </div>
+  </section>
+
+  <section id="s7">
+    <h2 class="sec"><span class="num">07</span>工具定义</h2>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>工具</th><th>输入</th><th>输出</th><th>映射</th></tr></thead>
+        <tbody>
+          <tr><td class="k">getProduct</td><td>idOrSlug</td><td>单个产品(含 specs / variants)</td><td>getPublicProductByIdorSlug</td></tr>
+          <tr><td class="k">searchProducts</td><td>category?, keyword?</td><td>产品列表(精简字段)</td><td>getPublicProducts</td></tr>
+          <tr><td class="k">createInquiry</td><td>name, email, message, (产品/数量)</td><td>inquiryId</td><td>现有 inquiry 系统 + 邮件</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout">
+      <span class="tag">硬约束</span>
+      <p>规格/数字问题<strong>必须</strong>走 <code>getProduct</code> / <code>searchProducts</code> 取真值,禁止模型自答。<code>createInquiry</code> 仅在 <code>collectedLead</code> 含 name + email 时允许触发。</p>
+    </div>
+  </section>
+
+  <section id="s8">
+    <h2 class="sec"><span class="num">08</span>RAG 设计</h2>
+    <p>硬规格走 tool calling(精确);<strong>软信息</strong>(公司简介、认证、OEM/ODM、包装出货、FAQ)走 RAG。内容量小,pipeline 要真、规模可小。</p>
+    <ul class="tight">
+      <li><strong>第 0 步</strong> —— 先把软内容<em>写出来</em>(现状 <code>company.mock.js</code> 太薄),这是真正的工作量。</li>
+      <li><strong>Pipeline</strong> —— chunk → embedding → 存 Atlas Vector Search → 相似度检索 → 注入 prompt。</li>
+      <li><strong>评估</strong> —— 20 条软问题做 before/after,拿到"命中率从 X 提到 Y",对上 JD 的"RAG 准确率提升经验"。</li>
+    </ul>
+    <div class="callout">
+      <span class="tag">决策</span>
+      <p>功能上内容少、静态块就够;但为 <strong>RAG + 向量库</strong> 关键词,升级成真 RAG(Atlas Vector Search / FAISS)。定位为"小而真"的 pipeline。</p>
+    </div>
+  </section>
+
+  <section id="s9">
+    <h2 class="sec"><span class="num">09</span>模型选型</h2>
+    <p>关键不是"智商",是 <strong>tool calling 可靠性 + 多语言 + 不幻觉</strong>。太小的模型(7B)在工具调用上会飘。甜点区是 Flash 级 / 70B 级 —— 而这一档有免费的。</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>方案</th><th>免费</th><th>Tool Calling</th><th>可部署</th><th>用途</th></tr></thead>
+        <tbody>
+          <tr><td class="k">Gemini Flash</td><td>✔ 免费额度</td><td>✔</td><td>✔</td><td>主力(托管)</td></tr>
+          <tr><td class="k">Groq · Llama 70B</td><td>✔ 免费额度</td><td>✔</td><td>✔</td><td>主力 + "开源"标签</td></tr>
+          <tr><td class="k">本地 Ollama</td><td>✔ 永久</td><td>⚠ 小模型弱</td><td>✘ Render 无 GPU</td><td>学原理 / 离线</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>用 <strong>OpenAI 兼容 SDK</strong> 写,endpoint 可换 —— "模型无关、可切换"本身是工程加分点。</p>
+  </section>
+
+  <section id="s10">
+    <h2 class="sec"><span class="num">10</span>防幻觉与安全边界</h2>
+    <ul class="tight">
+      <li><strong>数字只用工具返回值</strong> —— system prompt 明令"不得自行编造规格/价格/交期"。</li>
+      <li><strong>越界即转人工</strong> —— 价格/库存/交期/下单一律引导提交询盘,给出统一话术。</li>
+      <li><strong>写询盘有守卫</strong> —— <code>createInquiry</code> 需 name + email 才允许,防止误触发。</li>
+      <li><strong>输入清洗</strong> —— 沿用现有 inquiry 校验;注意 prompt 注入,只信任工具/资料内容。</li>
+    </ul>
+  </section>
+
+  <section id="s11">
+    <h2 class="sec"><span class="num">11</span>会话与记忆</h2>
+    <p><strong>记忆 ≠ 账号。</strong> 模型无状态,"记忆"= 每次把历史一起发过去;关联只需一个<strong>匿名会话 ID</strong>,不需要登录。</p>
+    <ul class="tight">
+      <li>首次开聊,前端生成 UUID <code>conversationId</code> 存 localStorage,每次请求带上。</li>
+      <li>后端按 <code>conversationId</code> 存 Mongo —— 无用户,一个 id 当钥匙。</li>
+      <li><strong>漏斗</strong>:浏览时匿名 → 留 email 提交询盘那一刻,把 <code>conversationId</code> 关联到 inquiry → 业务员看到完整售前对话背景。</li>
+      <li><strong>隐私</strong>:留资前不含 PII,合规干净。</li>
+    </ul>
+  </section>
+
+  <section id="s12">
+    <h2 class="sec"><span class="num">12</span>数据模型</h2>
+    <pre><span class="kw">conversations</span> {
+  conversationId: String,   <span class="c">// 匿名,索引</span>
+  messages: [{ role, content, toolCalls?, ts }],
+  collectedLead: { name?, email?, product?, quantity?, destination? },
+  createdAt, updatedAt
+}
+
+<span class="kw">inquiry</span> (复用现有) + 新增关联字段:
+  conversationId?: String   <span class="c">// 询盘 ← 对话</span></pre>
+  </section>
+
+  <section id="s13">
+    <h2 class="sec"><span class="num">13</span>成功指标与评估</h2>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>指标</th><th>目标</th><th>怎么测</th></tr></thead>
+        <tbody>
+          <tr><td class="k">规格问答准确率</td><td>≥ 95%(数字类)</td><td>20–30 条测试集,标 pass/fail</td></tr>
+          <tr><td class="k">幻觉率(数字)</td><td>≈ 0</td><td>抽查是否只复述工具值</td></tr>
+          <tr><td class="k">越界转人工命中</td><td>≥ 90%</td><td>价格/库存类问题是否正确拒绝</td></tr>
+          <tr><td class="k">RAG 软问题命中</td><td>before/after 对比</td><td>eval 集报提升幅度</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout">
+      <span class="tag">非玩具信号</span>
+      <p>真实动作(闭环)+ 防幻觉护栏 + <strong>一个小 eval(能报数字)</strong> + 后台对话日志 —— 都不深,但每一样都在喊"这是真系统"。</p>
+    </div>
+  </section>
+
+  <section id="s14">
+    <h2 class="sec"><span class="num">14</span>开发里程碑 (P0 → P8)</h2>
+    <p class="sec-note">从零学 Agent 的爬坡顺序。总时长:专注 ~1 周 / 下班式 ~2–3 周。</p>
+    <div class="timeline">
+      <div class="phase"><div class="pn">P0</div><div><p class="pt">练手沙盒(一次性)</p><p class="pd">独立小脚本,用免费 API 让模型调用一个假工具,亲眼看懂"模型→工具→喂回→回答"循环。</p><div class="pmeta"><span class="chip learn">学:tool calling 消息格式 + 循环</span><span class="chip">~0.5 天</span></div></div></div>
+      <div class="phase"><div class="pn">P1</div><div><p class="pt">基础对话</p><p class="pd">Juxin 加 /api/chat(先不接工具)+ 最简聊天气泡。先让它会说话。</p><div class="pmeta"><span class="chip learn">学:前后端聊天链路 · 流式</span><span class="chip">1–2 天</span></div></div></div>
+      <div class="phase"><div class="pn">P2</div><div><p class="pt">接工具 · 核心 ★</p><p class="pd">用 LangGraph 编排,把现有产品接口包成 tool,让它真的查库回答规格。</p><div class="pmeta"><span class="chip learn">学:tool schema · LangGraph · 浅循环</span><span class="chip">2–4 天</span></div></div></div>
+      <div class="phase"><div class="pn">P3</div><div><p class="pt">防幻觉 + 护栏</p><p class="pd">写 system prompt:身份、数字只用工具值、越界转人工。</p><div class="pmeta"><span class="chip learn">学:prompt 工程 · 边界控制</span><span class="chip">1 天</span></div></div></div>
+      <div class="phase"><div class="pn">P4</div><div><p class="pt">记忆 + 抓询盘 · 闭环 ★</p><p class="pd">conversationId 存 Mongo;create_inquiry 工具,信息够了落结构化询盘并关联对话。</p><div class="pmeta"><span class="chip learn">学:把 Agent 接进真实业务动作</span><span class="chip">1–2 天</span></div></div></div>
+      <div class="phase"><div class="pn">P5</div><div><p class="pt">RAG + 向量库 ★</p><p class="pd">公司软信息切块 → Atlas Vector Search → 检索注入 + 小评估。(为 RAG/向量库关键词升级)</p><div class="pmeta"><span class="chip learn">学:embedding · 检索 · 评估</span><span class="chip">1–2 天</span></div></div></div>
+      <div class="phase"><div class="pn">P6</div><div><p class="pt">严肃信号</p><p class="pd">20–30 条 eval 集(报准确率)+ 对话/工具日志接进 admin 后台。</p><div class="pmeta"><span class="chip learn">学:评估思维 · 可观测性</span><span class="chip">1–2 天</span></div></div></div>
+      <div class="phase"><div class="pn">P7</div><div><p class="pt">部署</p><p class="pd">免费模型 key 配到 Render 环境变量,上线。</p><div class="pmeta"><span class="chip learn">学:密钥管理 · 部署</span><span class="chip">~0.5 天</span></div></div></div>
+      <div class="phase"><div class="pn">P8</div><div><p class="pt">MCP(拉伸)</p><p class="pd">工具封装成 MCP server,agent 经协议消费。前沿加分,排最后。</p><div class="pmeta"><span class="chip learn">学:MCP 协议 · 服务解耦</span><span class="chip">1–2 天</span></div></div></div>
+    </div>
+  </section>
+
+  <section id="s15">
+    <h2 class="sec"><span class="num">15</span>技术栈与部署</h2>
+    <ul class="tight">
+      <li><strong>Agent</strong> —— Node + LangGraph.js(留在 Juxin 栈内);模型经 OpenAI 兼容 SDK,可切换。</li>
+      <li><strong>向量</strong> —— MongoDB Atlas Vector Search(零新增基建)或 FAISS。</li>
+      <li><strong>封装</strong> —— Docker 多阶段;若 agent 做<strong>独立服务</strong>,则 compose 编排 frontend + backend + agent 三容器(强化"多服务编排 + MCP"故事)。</li>
+      <li><strong>部署</strong> —— Render 每服务单独部署;本地 compose 展示多服务能力即可,线上可简化。</li>
+    </ul>
+  </section>
+
+  <section id="s16">
+    <h2 class="sec"><span class="num">16</span>范围纪律(不做什么)</h2>
+    <div class="callout badbox">
+      <span class="tag">明确不碰 —— 超预算且易在面试翻车</span>
+      <p>多 Agent 编排 · 手写 ReAct 脚手架 / LangChain 老 AgentExecutor · 微调 / 自训 embedding · 复杂 RAG(re-rank / query 改写)· LangGraph 复杂状态机 · 正式 eval 框架。</p>
+    </div>
+    <p>定位是"<strong>全栈工程师把 AI 功能扎实落进真实系统</strong>",不是 Agent 研究。深度不是战场 —— 扎根 + 闭环 + 测量才是。ReAct 当概念理解即可,用原生 tool calling / LangGraph 实现。</p>
+  </section>
+
+  <section id="s17">
+    <h2 class="sec"><span class="num">17</span>面试价值映射</h2>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>JD 关键词</th><th>本项目如何覆盖</th></tr></thead>
+        <tbody>
+          <tr><td class="k">Tool Calling / Function Calling</td><td>P2 核心,能讲透循环</td></tr>
+          <tr><td class="k">Agent 框架(LangGraph)</td><td>P2 用 LangGraph 编排 + 懂其封装本质</td></tr>
+          <tr><td class="k">RAG + 向量库</td><td>P5 Atlas Vector Search + 准确率提升</td></tr>
+          <tr><td class="k">MCP</td><td>P8 工具封装为 MCP server</td></tr>
+          <tr><td class="k">ToB 企业级 / 从零到一</td><td>真实外贸官网,稀缺加分项</td></tr>
+          <tr><td class="k">Docker 容器化</td><td>多阶段 + compose 多服务编排</td></tr>
+          <tr><td class="k">Python</td><td>由其它算法 / 气候项目覆盖</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <p class="foot">聚鑫外贸售前 AI 助理 · Agent PRD v0.1 · Draft · 2026-07-13 · 决策依据见对话记录,后续随开发迭代更新版本号。</p>
+
+</div>
