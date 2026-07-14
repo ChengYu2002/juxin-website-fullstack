@@ -79,9 +79,11 @@ function ProductDetail({ product }) {
           <h1 className="text-4xl font-semibold tracking-wide">{product.name}</h1>
 
           {/* 产品信息 */}
-          <div className="mt-3 text-lg text-gray-800">
-            <span className="font-medium">MOQ:</span> {product.moq} pcs
-          </div>
+          {product.moq > 0 && (
+            <div className="mt-3 text-lg text-gray-800">
+              <span className="font-medium">MOQ:</span> {product.moq} pcs
+            </div>
+          )}
           <div className="mt-3 text-lg text-gray-800">
             <span className="font-medium">Color:</span> {selectedVariant?.label}
           </div>
@@ -89,7 +91,7 @@ function ProductDetail({ product }) {
           <ProductActions product={product} selectedVariant={selectedVariant} />
 
           {/* 规格信息 */}
-          <ProductSpecs specs={product.specs} />
+          <ProductSpecs specs={product.specs} moq={product.moq} />
         </aside>
       </div>
 
