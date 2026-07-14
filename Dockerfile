@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1
+ # syntax=docker/dockerfile:1
 
 # ---------- 阶段 1:编译前端 ----------
 FROM node:20-alpine AS frontend-build
