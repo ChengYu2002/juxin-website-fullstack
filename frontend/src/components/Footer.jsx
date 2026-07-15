@@ -35,21 +35,37 @@ export default function Footer() {
           </Item>
 
           <Item icon={Smartphone} label="MOBILE / WeChat">
-            <a
-              href="tel:+8613967945038"
-              className="hover:text-white transition tabular-nums"
-            >
-              +86 13967945038
-            </a>
+            <div className="space-y-0.5">
+              <a
+                href="tel:+8613967945038"
+                className="block hover:text-white transition tabular-nums"
+              >
+                +86 13967945038
+              </a>
+              <a
+                href="tel:+8615067990314"
+                className="block hover:text-white transition tabular-nums"
+              >
+                +86 15067990314
+              </a>
+            </div>
           </Item>
 
           <Item icon={Mail} label="EMAIL">
-            <a
-              href="mailto:sale01@cn-jason.net"
-              className="text-neutral-200 hover:text-white transition underline-offset-4 hover:underline break-all"
-            >
-              sale01@cn-jason.net
-            </a>
+            <div className="space-y-0.5">
+              <a
+                href="mailto:sale01@cn-jason.net"
+                className="block text-neutral-200 hover:text-white transition underline-offset-4 hover:underline break-all"
+              >
+                sale01@cn-jason.net
+              </a>
+              <a
+                href="mailto:by3@bywycn.com"
+                className="block text-neutral-200 hover:text-white transition underline-offset-4 hover:underline break-all"
+              >
+                by3@bywycn.com
+              </a>
+            </div>
           </Item>
         </div>
 

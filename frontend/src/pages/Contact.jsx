@@ -299,6 +299,10 @@ export default function Contact() {
           <a className="underline" href={`mailto:${COMPANY_EMAIL}`}>
             {COMPANY_EMAIL}
           </a>
+          {' '}·{' '}
+          <a className="underline" href="mailto:by3@bywycn.com">
+            by3@bywycn.com
+          </a>
         </p>
       </form>
     </main>
