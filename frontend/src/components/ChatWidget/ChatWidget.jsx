@@ -3,6 +3,7 @@
 // - 前端持有 messages[] 历史，每次整包发给 /api/chat（模型无状态，历史即记忆）
 // - 匿名 conversationId 存 localStorage（P4 会用它把对话关联到询盘）
 // - 视觉：深色毛玻璃 / 黑白透明 / 灵动悬浮，对齐站点审美（Tailwind）
+// - 响应式：手机近全屏 sheet，桌面右下浮窗；输入框 16px 防 iOS 聚焦缩放
 
 import { useEffect, useRef, useState } from 'react'
 import { MessageCircle, X, Send } from 'lucide-react'
@@ -87,7 +88,7 @@ export default function ChatWidget() {
   const nudging = !open && hint !== 'dismissed'
 
   return (
-    <div className="fixed bottom-6 right-6 z-[1000] flex flex-col items-end">
+    <>
       {/* 灵动悬浮 / 提醒动画 */}
       <style>{`
         @keyframes cwIn{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:none}}
@@ -96,25 +97,22 @@ export default function ChatWidget() {
         @keyframes cwBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
       `}</style>
 
+      {/* 对话面板：手机近全屏 sheet，桌面右下浮窗 */}
       {open && (
         <div
           role="dialog"
           aria-label="巨鑫售前助理"
-          style={{ animation: 'cwIn .2s ease-out' }}
+          style={{ animation: 'cwIn .22s ease-out' }}
           className="
-            relative mb-3 flex h-[520px] max-h-[calc(100vh-8rem)] w-[360px] max-w-[calc(100vw-3rem)]
-            flex-col overflow-hidden rounded-2xl
-            border border-white/15 bg-neutral-950/60 text-white
-            shadow-[0_16px_50px_rgba(0,0,0,0.45)] backdrop-blur-xl
+            fixed z-[1001] flex flex-col overflow-hidden text-white
+            inset-3 rounded-2xl
+            sm:inset-auto sm:right-6 sm:bottom-24 sm:h-[560px] sm:w-[370px] sm:max-h-[calc(100dvh-8rem)]
+            border border-white/15 bg-neutral-950/80 backdrop-blur-xl
+            shadow-[0_16px_50px_rgba(0,0,0,0.5)] sm:bg-neutral-950/60
           "
         >
           {/* 玻璃高光反射 */}
-          <div
-            className="
-              pointer-events-none absolute inset-0 rounded-2xl
-              bg-[linear-gradient(120deg,rgba(255,255,255,0.14),rgba(255,255,255,0.02)_40%,transparent_60%)]
-            "
-          />
+          <div className="pointer-events-none absolute inset-0 rounded-2xl bg-[linear-gradient(120deg,rgba(255,255,255,0.14),rgba(255,255,255,0.02)_40%,transparent_60%)]" />
 
           <div className="relative z-10 flex h-full flex-col">
             {/* 头部 */}
@@ -126,9 +124,9 @@ export default function ChatWidget() {
               <button
                 onClick={() => setOpen(false)}
                 aria-label="关闭"
-                className="text-white/60 transition hover:text-white"
+                className="-mr-1 grid h-8 w-8 place-items-center rounded-full text-white/60 transition hover:bg-white/10 hover:text-white"
               >
-                <X size={18} />
+                <X size={20} />
               </button>
             </div>
 
@@ -142,15 +140,15 @@ export default function ChatWidget() {
                   key={i}
                   className={
                     m.role === 'user'
-                      ? 'max-w-[82%] self-end whitespace-pre-wrap break-words rounded-2xl rounded-br-md bg-white px-3 py-2 text-sm leading-relaxed text-neutral-900 shadow-sm'
-                      : 'max-w-[82%] self-start whitespace-pre-wrap break-words rounded-2xl rounded-bl-md border border-white/10 bg-white/10 px-3 py-2 text-sm leading-relaxed text-white/90'
+                      ? 'max-w-[85%] self-end whitespace-pre-wrap break-words rounded-2xl rounded-br-md bg-white px-3 py-2 text-sm leading-relaxed text-neutral-900 shadow-sm'
+                      : 'max-w-[85%] self-start whitespace-pre-wrap break-words rounded-2xl rounded-bl-md border border-white/10 bg-white/10 px-3 py-2 text-sm leading-relaxed text-white/90'
                   }
                 >
                   {m.content}
                 </div>
               ))}
               {loading && (
-                <div className="max-w-[82%] self-start rounded-2xl rounded-bl-md border border-white/10 bg-white/5 px-3 py-2 text-sm italic text-white/50">
+                <div className="max-w-[85%] self-start rounded-2xl rounded-bl-md border border-white/10 bg-white/5 px-3 py-2 text-sm italic text-white/50">
                   Jason 正在输入…
                 </div>
               )}
@@ -161,8 +159,8 @@ export default function ChatWidget() {
               )}
             </div>
 
-            {/* 输入区 */}
-            <div className="flex items-end gap-2 border-t border-white/10 px-3 py-3">
+            {/* 输入区 —— text-base(16px) 防 iOS 聚焦缩放；底部留安全区 */}
+            <div className="flex items-end gap-2 border-t border-white/10 px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
               <textarea
                 rows={1}
                 placeholder="输入问题，Enter 发送…"
@@ -172,8 +170,8 @@ export default function ChatWidget() {
                 disabled={loading}
                 className="
                   max-h-24 flex-1 resize-none rounded-xl border border-white/15 bg-white/10
-                  px-3 py-2 text-sm text-white placeholder-white/40 outline-none
-                  backdrop-blur transition focus:border-white/40
+                  px-3 py-2 text-base text-white placeholder-white/40 outline-none
+                  backdrop-blur transition focus:border-white/40 sm:text-sm
                 "
               />
               <button
@@ -192,14 +190,18 @@ export default function ChatWidget() {
         </div>
       )}
 
-      {/* 底部：提醒气泡 + 悬浮圆钮 */}
-      <div className="flex items-center gap-2.5">
+      {/* 底部：提醒气泡 + 悬浮圆钮（手机打开时隐藏，用面板头部 × 关闭） */}
+      <div
+        className={`fixed bottom-5 right-5 z-[1000] items-center gap-2.5 sm:bottom-6 sm:right-6 ${
+          open ? 'hidden sm:flex' : 'flex'
+        }`}
+      >
         {/* 提醒气泡：点文字开聊，点 × 关掉 */}
         {nudging && hint === 'shown' && (
           <div
             style={{ animation: 'cwHintIn .3s ease-out' }}
             className="
-              flex items-center gap-1 whitespace-nowrap rounded-full
+              flex max-w-[70vw] items-center gap-1 whitespace-nowrap rounded-full
               border border-white/15 bg-neutral-900/75 py-2 pl-4 pr-2 text-sm text-white
               shadow-[0_8px_30px_rgba(0,0,0,0.3)] backdrop-blur-md
             "
@@ -209,14 +211,14 @@ export default function ChatWidget() {
                 setOpen(true)
                 setHint('dismissed')
               }}
-              className="cursor-pointer"
+              className="cursor-pointer truncate"
             >
-              👋 你好，我是 Jason，有问题点我
+              👋 你好，我是 Jason
             </button>
             <button
               onClick={() => setHint('dismissed')}
               aria-label="关闭提示"
-              className="grid h-5 w-5 place-items-center rounded-full text-white/50 transition hover:bg-white/10 hover:text-white"
+              className="grid h-5 w-5 shrink-0 place-items-center rounded-full text-white/50 transition hover:bg-white/10 hover:text-white"
             >
               <X size={13} />
             </button>
@@ -250,6 +252,6 @@ export default function ChatWidget() {
           </div>
         </div>
       </div>
-    </div>
+    </>
   )
 }
