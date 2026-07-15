@@ -8,6 +8,7 @@ const inquiryRouter = require('./routes/inquiry')
 const adminAuthRouter = require('./routes/adminAuth')
 const productsRouter = require('./routes/products')
 const uploadsRouter = require('./routes/uploads')
+const chatRouter = require('./routes/chat')
 const { requestLogger } = require('./middleware/requestLogger')
 const { unknownEndpoint } = require('./middleware/unknownEndpoint')
 const { errorHandler } = require('./middleware/errorHandler')
@@ -65,6 +66,9 @@ app.use('/api/inquiries', inquiryRouter)
 
 // 产品路由
 app.use('/api/products', productsRouter)
+
+// 售前 AI 助理对话路由（P1 纯对话）
+app.use('/api/chat', chatRouter)
 
 // 静态文件中间件，托管前端打包后的静态资源
 // ✅ 用绝对路径更稳：因为 app.js 在 src/，dist 通常在项目根目录
