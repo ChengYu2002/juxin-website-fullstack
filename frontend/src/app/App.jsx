@@ -2,6 +2,7 @@
 import Header from '../components/Header'
 import Footer from '../components/Footer'
 import AppRouter from './router'
+import ChatWidget from '../components/ChatWidget/ChatWidget'
 
 export default function App() {
   return (
@@ -11,6 +12,7 @@ export default function App() {
         <AppRouter />
       </div>
       <Footer />
+      <ChatWidget />
     </>
   )
 }
