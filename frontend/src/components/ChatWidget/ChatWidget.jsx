@@ -2,7 +2,10 @@
 // 售前 AI 助理浮动气泡（P1：纯对话）
 // - 前端持有 messages[] 历史，每次整包发给 /api/chat（模型无状态，历史即记忆）
 // - 匿名 conversationId 存 localStorage（P4 会用它把对话关联到询盘）
-// - 视觉：深色毛玻璃 / 黑白透明；桌面右下浮窗，手机全屏 sheet（锁背景滚动 + 键盘上弹）
+// - 视觉：深色毛玻璃；桌面右下浮窗，手机全屏 sheet
+// - 手机键盘处理（iOS Safari 最难点）：
+//     · 真锁背景：body{position:fixed} 记录/恢复滚动位置（overflow:hidden 在 iOS 不够）
+//     · 输入框随键盘：visualViewport 改面板高度 + translateY(offsetTop)，稳在键盘上方
 // - 输入：自动长高；回车发送但尊重中文输入法组词（isComposing 不误发）
 
 import { useEffect, useRef, useState } from 'react'
@@ -11,7 +14,6 @@ import { sendChat } from '../../services/chatService'
 
 const CID_KEY = 'juxin_chat_cid'
 
-// 取/建匿名会话 ID
 function getConversationId() {
   let cid = localStorage.getItem(CID_KEY)
   if (!cid) {
@@ -28,13 +30,13 @@ const WELCOME = {
 
 export default function ChatWidget() {
   const [open, setOpen] = useState(false)
-  const [messages, setMessages] = useState([WELCOME]) // 含欢迎语，仅展示
+  const [messages, setMessages] = useState([WELCOME])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [hint, setHint] = useState('hidden') // 'hidden' | 'shown' | 'dismissed'
   const [isMobile, setIsMobile] = useState(false)
-  const [vvHeight, setVvHeight] = useState(null) // 手机键盘弹出时的可视高度
+  const [vp, setVp] = useState(null) // 手机键盘时的可视视口 { height, offsetTop }
 
   const listRef = useRef(null)
   const cidRef = useRef(null)
@@ -49,7 +51,7 @@ export default function ChatWidget() {
     return () => mq.removeEventListener('change', on)
   }, [])
 
-  // 进站 2.5s 后冒出"我是 Jason"提醒（未开过 / 未关掉时）
+  // 进站 2.5s 后冒出提醒（未开过 / 未关掉时）
   useEffect(() => {
     if (open || hint !== 'hidden') return
     const t = setTimeout(() => setHint('shown'), 2500)
@@ -61,36 +63,49 @@ export default function ChatWidget() {
     if (open && !cidRef.current) cidRef.current = getConversationId()
   }, [open])
 
-  // 手机全屏打开时：锁住背景滚动（只有关闭才能继续滑网页）
+  // 手机全屏打开时：真锁背景（iOS 可靠做法 = body position:fixed + 记录/恢复滚动位置）
   useEffect(() => {
     if (!open || !isMobile) return
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+    const scrollY = window.scrollY
+    const body = document.body
+    const saved = {
+      position: body.style.position,
+      top: body.style.top,
+      left: body.style.left,
+      right: body.style.right,
+      width: body.style.width,
+    }
+    body.style.position = 'fixed'
+    body.style.top = `-${scrollY}px`
+    body.style.left = '0'
+    body.style.right = '0'
+    body.style.width = '100%'
     return () => {
-      document.body.style.overflow = prev
+      Object.assign(body.style, saved)
+      window.scrollTo(0, scrollY)
     }
   }, [open, isMobile])
 
-  // 手机键盘弹出：用 visualViewport 让面板贴合可视区，输入框随键盘上弹
+  // 手机键盘弹出：用 visualViewport 让面板贴合可视区，输入框稳在键盘上方
   useEffect(() => {
-    if (!open) return
-    const vv = window.visualViewport
-    if (!vv) return
-    const onResize = () => setVvHeight(vv.height)
-    onResize()
-    vv.addEventListener('resize', onResize)
-    vv.addEventListener('scroll', onResize)
+    if (!open || !isMobile) return
+    const v = window.visualViewport
+    if (!v) return
+    const on = () => setVp({ height: v.height, offsetTop: v.offsetTop })
+    on()
+    v.addEventListener('resize', on)
+    v.addEventListener('scroll', on)
     return () => {
-      vv.removeEventListener('resize', onResize)
-      vv.removeEventListener('scroll', onResize)
-      setVvHeight(null)
+      v.removeEventListener('resize', on)
+      v.removeEventListener('scroll', on)
+      setVp(null)
     }
-  }, [open])
+  }, [open, isMobile])
 
   // 新消息/加载态变化时滚到底
   useEffect(() => {
     if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight
-  }, [messages, loading])
+  }, [messages, loading, vp])
 
   // 输入框自动长高（封顶 140px 后内部滚动）
   useEffect(() => {
@@ -103,13 +118,11 @@ export default function ChatWidget() {
   async function handleSend() {
     const text = input.trim()
     if (!text || loading) return
-
     const nextMessages = [...messages, { role: 'user', content: text }]
     setMessages(nextMessages)
     setInput('')
     setError(null)
     setLoading(true)
-
     try {
       const payload = nextMessages.filter((m) => m !== WELCOME)
       const { reply } = await sendChat(payload, cidRef.current)
@@ -123,7 +136,7 @@ export default function ChatWidget() {
 
   function handleKeyDown(e) {
     if (e.key !== 'Enter' || e.shiftKey) return
-    // 中文/日文等输入法组词中：回车是"确认候选词"，绝不能当发送
+    // 中文/日文等输入法组词中：回车是"确认候选词"，绝不当发送
     if (e.nativeEvent.isComposing || e.keyCode === 229) return
     e.preventDefault()
     handleSend()
@@ -131,36 +144,42 @@ export default function ChatWidget() {
 
   const nudging = !open && hint !== 'dismissed'
 
+  // 手机端：面板尺寸/位置跟随 visualViewport（键盘弹出时不漂）
+  const mobilePanelStyle =
+    isMobile && open
+      ? {
+          height: vp ? `${vp.height}px` : '100dvh',
+          transform: vp ? `translateY(${vp.offsetTop}px)` : undefined,
+          animation: 'cwFade .2s ease-out',
+        }
+      : { animation: 'cwIn .22s ease-out' }
+
   return (
     <>
-      {/* 灵动悬浮 / 提醒动画 */}
       <style>{`
         @keyframes cwIn{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:none}}
-        @keyframes cwInMobile{from{opacity:0;transform:translateY(100%)}to{opacity:1;transform:none}}
+        @keyframes cwFade{from{opacity:0}to{opacity:1}}
         @keyframes cwPing{0%{transform:scale(1);opacity:.5}70%{opacity:0}100%{transform:scale(1.9);opacity:0}}
         @keyframes cwHintIn{from{opacity:0;transform:translateX(10px) scale(.96)}to{opacity:1;transform:none}}
         @keyframes cwBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
       `}</style>
 
-      {/* 对话面板：手机全屏 sheet，桌面右下浮窗 */}
+      {/* 对话面板：手机全屏 sheet（跟随键盘），桌面右下浮窗 */}
       {open && (
         <div
           role="dialog"
           aria-label="巨鑫售前助理"
-          style={{
-            animation: isMobile ? 'cwInMobile .25s ease-out' : 'cwIn .22s ease-out',
-            ...(isMobile && vvHeight ? { height: vvHeight + 'px' } : {}),
-          }}
+          style={mobilePanelStyle}
           className="
             fixed z-[1001] flex flex-col overflow-hidden text-white
-            inset-x-0 top-0 h-[100dvh] rounded-none border-0 bg-neutral-950/90
-            sm:inset-x-auto sm:top-auto sm:right-6 sm:bottom-24 sm:h-[560px] sm:w-[370px]
+            inset-x-0 top-0 left-0 rounded-none border-0 bg-neutral-950
+            sm:inset-auto sm:top-auto sm:right-6 sm:bottom-24 sm:h-[560px] sm:w-[370px]
             sm:max-h-[calc(100dvh-8rem)] sm:rounded-2xl sm:border sm:border-white/15 sm:bg-neutral-950/60
             backdrop-blur-xl shadow-[0_16px_50px_rgba(0,0,0,0.5)]
           "
         >
-          {/* 玻璃高光反射 */}
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,rgba(255,255,255,0.12),rgba(255,255,255,0.02)_40%,transparent_60%)]" />
+          {/* 玻璃高光反射（仅桌面明显） */}
+          <div className="pointer-events-none absolute inset-0 hidden bg-[linear-gradient(120deg,rgba(255,255,255,0.12),rgba(255,255,255,0.02)_40%,transparent_60%)] sm:block" />
 
           <div className="relative z-10 flex h-full flex-col">
             {/* 头部 */}
@@ -181,7 +200,7 @@ export default function ChatWidget() {
             {/* 消息区 */}
             <div
               ref={listRef}
-              className="flex flex-1 flex-col gap-2.5 overflow-y-auto px-4 py-4 [scrollbar-color:rgba(255,255,255,0.25)_transparent] [scrollbar-width:thin]"
+              className="flex flex-1 flex-col gap-2.5 overflow-y-auto overscroll-contain px-4 py-4 [scrollbar-color:rgba(255,255,255,0.25)_transparent] [scrollbar-width:thin]"
             >
               {messages.map((m, i) => (
                 <div
