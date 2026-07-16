@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import PartnersMarquee from '../components/PartnersMarquee'
 import Certifications from '../components/Certifications'
 import Seo from '../components/Seo'
+import { useImg } from '../context/ImageRegionContext'
 
 const COMPANY = {
   name: 'JUXIN',
@@ -118,10 +119,11 @@ function FeatureBlock({ title, desc }) {
 }
 
 function ImageCard({ title, image }) {
+  const imgSrc = useImg()
   return (
     <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5">
       <div className="aspect-[4/3] overflow-hidden">
-        <img src={image} alt={title} className="h-full w-full object-cover" loading="lazy" />
+        <img src={imgSrc(image)} alt={title} className="h-full w-full object-cover" loading="lazy" />
       </div>
 
       <div className="p-4">
@@ -132,6 +134,7 @@ function ImageCard({ title, image }) {
 }
 
 export default function About() {
+  const imgSrc = useImg()
   return (
     <main className="bg-white">
       <Seo
@@ -336,7 +339,7 @@ export default function About() {
                     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow">
                       <div className="aspect-[16/9] overflow-hidden bg-slate-100">
                         <img
-                          src={CAPABILITY_MEDIA[0].image}
+                          src={imgSrc(CAPABILITY_MEDIA[0].image)}
                           alt={CAPABILITY_MEDIA[0].title}
                           className="h-full w-full object-cover"
                           loading="lazy"
@@ -354,7 +357,7 @@ export default function About() {
                       >
                         <div className="aspect-[3/2] overflow-hidden bg-slate-100">
                           <img
-                            src={x.image}
+                            src={imgSrc(x.image)}
                             alt={x.title}
                             className="h-full w-full object-cover"
                             loading="lazy"

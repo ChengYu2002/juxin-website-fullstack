@@ -4,12 +4,15 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 
 import App from './app/App'
+import { ImageRegionProvider } from './context/ImageRegionContext'
 import './styles/globals.css'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
+    <ImageRegionProvider>
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </ImageRegionProvider>
   </StrictMode>
 )
