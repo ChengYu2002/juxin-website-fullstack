@@ -5,8 +5,7 @@
 // - 视觉：深色毛玻璃；桌面右下浮窗，手机全屏 sheet
 // - 手机键盘处理（iOS Safari 最难点）：
 //     · 真锁背景：body{position:fixed} 记录/恢复滚动位置（overflow:hidden 在 iOS 不够）
-//     · 键盘上弹：面板 h-[100dvh] + viewport meta interactive-widget=resizes-content
-//       （2025 推荐做法；不再用 visualViewport JS 观测——iOS 26 的 offsetTop/height 有 bug 反致漂移）
+//     · 输入框随键盘：visualViewport 改面板高度 + translateY(offsetTop)，稳在键盘上方
 // - 输入：自动长高；回车发送但尊重中文输入法组词（isComposing 不误发）
 
 import { useEffect, useRef, useState } from 'react'
@@ -37,6 +36,7 @@ export default function ChatWidget() {
   const [error, setError] = useState(null)
   const [hint, setHint] = useState('hidden') // 'hidden' | 'shown' | 'dismissed'
   const [isMobile, setIsMobile] = useState(false)
+  const [vp, setVp] = useState(null) // 手机键盘时的可视视口 { height, offsetTop }
 
   const listRef = useRef(null)
   const cidRef = useRef(null)
@@ -86,14 +86,26 @@ export default function ChatWidget() {
     }
   }, [open, isMobile])
 
-  // 键盘处理：不再用 JS 观测 visualViewport（iOS 26 的 offsetTop/height 有 bug，反致漂移）。
-  // 改用 viewport meta `interactive-widget=resizes-content` + 面板 h-[100dvh]：
-  // 键盘弹出时浏览器自动收缩布局，输入框随之留在键盘上方。
+  // 手机键盘弹出：用 visualViewport 让面板贴合可视区，输入框稳在键盘上方
+  useEffect(() => {
+    if (!open || !isMobile) return
+    const v = window.visualViewport
+    if (!v) return
+    const on = () => setVp({ height: v.height, offsetTop: v.offsetTop })
+    on()
+    v.addEventListener('resize', on)
+    v.addEventListener('scroll', on)
+    return () => {
+      v.removeEventListener('resize', on)
+      v.removeEventListener('scroll', on)
+      setVp(null)
+    }
+  }, [open, isMobile])
 
   // 新消息/加载态变化时滚到底
   useEffect(() => {
     if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight
-  }, [messages, loading])
+  }, [messages, loading, vp])
 
   // 输入框自动长高（封顶 140px 后内部滚动）
   useEffect(() => {
@@ -132,8 +144,15 @@ export default function ChatWidget() {
 
   const nudging = !open && hint !== 'dismissed'
 
-  // 入场动画：手机纯淡入，桌面上滑淡入
-  const panelStyle = isMobile ? { animation: 'cwFade .2s ease-out' } : { animation: 'cwIn .22s ease-out' }
+  // 手机端：面板尺寸/位置跟随 visualViewport（键盘弹出时不漂）
+  const mobilePanelStyle =
+    isMobile && open
+      ? {
+          height: vp ? `${vp.height}px` : '100dvh',
+          transform: vp ? `translateY(${vp.offsetTop}px)` : undefined,
+          animation: 'cwFade .2s ease-out',
+        }
+      : { animation: 'cwIn .22s ease-out' }
 
   return (
     <>
@@ -150,10 +169,10 @@ export default function ChatWidget() {
         <div
           role="dialog"
           aria-label="巨鑫售前助理"
-          style={panelStyle}
+          style={mobilePanelStyle}
           className="
             fixed z-[1001] flex flex-col overflow-hidden text-white
-            inset-x-0 top-0 left-0 h-[100dvh] rounded-none border-0 bg-neutral-950
+            inset-x-0 top-0 left-0 rounded-none border-0 bg-neutral-950
             sm:inset-auto sm:top-auto sm:right-6 sm:bottom-24 sm:h-[560px] sm:w-[370px]
             sm:max-h-[calc(100dvh-8rem)] sm:rounded-2xl sm:border sm:border-white/15 sm:bg-neutral-950/60
             backdrop-blur-xl shadow-[0_16px_50px_rgba(0,0,0,0.5)]
