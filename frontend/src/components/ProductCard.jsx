@@ -1,7 +1,9 @@
 // src/components/ProductCard.jsx
 import { Link } from 'react-router-dom'
+import { useImg } from '../context/ImageRegionContext'
 
 export default function ProductCard({ product }) {
+  const imgSrc = useImg()
   const variants = Array.isArray(product?.variants) ? product.variants : []
   const mainImage = variants?.[0]?.images?.[0]
 
@@ -25,7 +27,7 @@ export default function ProductCard({ product }) {
       >
         {mainImage ? (
           <img
-            src={mainImage}
+            src={imgSrc(mainImage)}
             alt={product.name}
             className="h-full w-full object-contain
                       p-1.5 sm:p-2

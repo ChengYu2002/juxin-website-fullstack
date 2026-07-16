@@ -1,14 +1,16 @@
 // src/components/Hero.jsx
 import { Link } from 'react-router-dom'
+import { useImg } from '../context/ImageRegionContext'
 
 export default function Hero() {
+  const imgSrc = useImg()
   return (
     <section className="relative w-full overflow-hidden bg-black">
       {/* 背景图容器：手机不要太高；中大屏恢复“英雄图”高度 */}
       <div className="relative h-[420px] sm:h-[520px] md:h-[560px] lg:h-[calc(100vh-64px)] lg:min-h-[720px]">
         {/* 背景图：不同屏幕焦点不同 */}
         <img
-          src="https://img.juxin-manufacturing.com/website/1-1920.webp"
+          src={imgSrc('https://img.juxin-manufacturing.com/website/1-1920.webp')}
           alt="Warehouse trolleys"
           loading="eager"
           fetchpriority="high"

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useImg } from '../context/ImageRegionContext'
 
 const CERT_FILES = ['ISO_Envrioment.webp', 'ISO_Quality.webp', 'Health_Safe.webp', 'Social_Resp.webp', 'Workplace.webp', 'CE1.webp', 'CE2.webp']
 
@@ -15,6 +16,7 @@ function getPageSize() {
 }
 
 export default function Certifications() {
+  const imgSrc = useImg()
   const [page, setPage] = useState(0)
   const [pageSize, setPageSize] = useState(getPageSize)
 
@@ -66,7 +68,7 @@ export default function Certifications() {
               >
                 <div className="aspect-[3/4] bg-slate-50">
                   <img
-                    src={c.src}
+                    src={imgSrc(c.src)}
                     alt={c.title}
                     className="h-full w-full object-contain p-4 sm:p-5"
                     loading="lazy"

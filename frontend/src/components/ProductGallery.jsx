@@ -2,6 +2,7 @@
 import { useRef, useState } from 'react'
 import Lightbox from 'yet-another-react-lightbox'
 import 'yet-another-react-lightbox/styles.css'
+import { useImg } from '../context/ImageRegionContext'
 
 /**
  * ProductGallery
@@ -10,6 +11,7 @@ import 'yet-another-react-lightbox/styles.css'
  * - 支持左右切换、圆点指示、图片计数
  */
 export default function ProductGallery({ images = [] }) {
+  const imgSrc = useImg()
   // 当前选中该变体下第几张图
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const [lightboxOpen, setLightboxOpen] = useState(false)
@@ -92,7 +94,7 @@ export default function ProductGallery({ images = [] }) {
         onTouchEnd={onTouchEnd}
       >
         <img
-          src={images[safeIndex]}
+          src={imgSrc(images[safeIndex])}
           alt={`Product image ${safeIndex + 1}`}
           onClick={() => setLightboxOpen(true)}
           className="h-full w-full cursor-zoom-in object-contain"
@@ -147,7 +149,7 @@ export default function ProductGallery({ images = [] }) {
         close={() => setLightboxOpen(false)}
         index={safeIndex}
         slides={images.map((src, index) => ({
-          src,
+          src: imgSrc(src),
           alt: `Product image ${index + 1}`,
         }))}
         render={{
@@ -173,7 +175,7 @@ export default function ProductGallery({ images = [] }) {
                 }`}
               >
                 <img
-                  src={img}
+                  src={imgSrc(img)}
                   alt={`Thumbnail ${index + 1}`}
                   className="h-full w-full object-cover"
                 />

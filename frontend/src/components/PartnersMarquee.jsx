@@ -1,7 +1,9 @@
 // src/components/PartnersMarquee.jsx
 import { useMemo } from 'react'
+import { useImg } from '../context/ImageRegionContext'
 
 export default function PartnersMarquee() {
+  const imgSrc = useImg()
   const partners = useMemo(
     () => [
       { name: 'ALDI', src: 'https://img.juxin-manufacturing.com/website/aldi.svg', scale: 1.5 },
@@ -35,7 +37,7 @@ export default function PartnersMarquee() {
     >
       <div className="flex h-8 items-center justify-center sm:h-14">
         <img
-          src={p.src}
+          src={imgSrc(p.src)}
           alt={p.name}
           loading="lazy"
           draggable="false"
