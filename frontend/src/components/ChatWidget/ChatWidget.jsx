@@ -2,8 +2,8 @@
 // 售前 AI 助理浮动气泡（P1：纯对话）
 // - 前端持有 messages[] 历史，每次整包发给 /api/chat（模型无状态，历史即记忆）
 // - 匿名 conversationId 存 localStorage（P4 会用它把对话关联到询盘）
-// - 视觉：深色毛玻璃 / 黑白透明 / 灵动悬浮，对齐站点审美（Tailwind）
-// - 响应式：手机近全屏 sheet，桌面右下浮窗；输入框 16px 防 iOS 聚焦缩放
+// - 视觉：深色毛玻璃 / 黑白透明；桌面右下浮窗，手机全屏 sheet（锁背景滚动 + 键盘上弹）
+// - 输入：自动长高；回车发送但尊重中文输入法组词（isComposing 不误发）
 
 import { useEffect, useRef, useState } from 'react'
 import { MessageCircle, X, Send } from 'lucide-react'
@@ -32,10 +32,22 @@ export default function ChatWidget() {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
-  const [hint, setHint] = useState('hidden') // 'hidden' | 'shown' | 'dismissed' —— 引起注意的提醒
+  const [hint, setHint] = useState('hidden') // 'hidden' | 'shown' | 'dismissed'
+  const [isMobile, setIsMobile] = useState(false)
+  const [vvHeight, setVvHeight] = useState(null) // 手机键盘弹出时的可视高度
 
   const listRef = useRef(null)
   const cidRef = useRef(null)
+  const taRef = useRef(null)
+
+  // 是否手机视口（< sm）
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 639px)')
+    const on = () => setIsMobile(mq.matches)
+    on()
+    mq.addEventListener('change', on)
+    return () => mq.removeEventListener('change', on)
+  }, [])
 
   // 进站 2.5s 后冒出"我是 Jason"提醒（未开过 / 未关掉时）
   useEffect(() => {
@@ -44,15 +56,49 @@ export default function ChatWidget() {
     return () => clearTimeout(t)
   }, [open, hint])
 
-  // 打开时才生成 conversationId（首次交互再落 localStorage）
+  // 打开时才生成 conversationId
   useEffect(() => {
     if (open && !cidRef.current) cidRef.current = getConversationId()
+  }, [open])
+
+  // 手机全屏打开时：锁住背景滚动（只有关闭才能继续滑网页）
+  useEffect(() => {
+    if (!open || !isMobile) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [open, isMobile])
+
+  // 手机键盘弹出：用 visualViewport 让面板贴合可视区，输入框随键盘上弹
+  useEffect(() => {
+    if (!open) return
+    const vv = window.visualViewport
+    if (!vv) return
+    const onResize = () => setVvHeight(vv.height)
+    onResize()
+    vv.addEventListener('resize', onResize)
+    vv.addEventListener('scroll', onResize)
+    return () => {
+      vv.removeEventListener('resize', onResize)
+      vv.removeEventListener('scroll', onResize)
+      setVvHeight(null)
+    }
   }, [open])
 
   // 新消息/加载态变化时滚到底
   useEffect(() => {
     if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight
   }, [messages, loading])
+
+  // 输入框自动长高（封顶 140px 后内部滚动）
+  useEffect(() => {
+    const el = taRef.current
+    if (!el) return
+    el.style.height = '0px'
+    el.style.height = Math.min(el.scrollHeight, 140) + 'px'
+  }, [input, open])
 
   async function handleSend() {
     const text = input.trim()
@@ -65,7 +111,6 @@ export default function ChatWidget() {
     setLoading(true)
 
     try {
-      // 只发真正的对话轮次给后端（欢迎语是纯展示）
       const payload = nextMessages.filter((m) => m !== WELCOME)
       const { reply } = await sendChat(payload, cidRef.current)
       setMessages((prev) => [...prev, { role: 'assistant', content: reply }])
@@ -77,14 +122,13 @@ export default function ChatWidget() {
   }
 
   function handleKeyDown(e) {
-    // Enter 发送，Shift+Enter 换行
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSend()
-    }
+    if (e.key !== 'Enter' || e.shiftKey) return
+    // 中文/日文等输入法组词中：回车是"确认候选词"，绝不能当发送
+    if (e.nativeEvent.isComposing || e.keyCode === 229) return
+    e.preventDefault()
+    handleSend()
   }
 
-  // 未打开、未关掉提醒时，圆钮跳动 + 光环 + 气泡都激活
   const nudging = !open && hint !== 'dismissed'
 
   return (
@@ -92,31 +136,35 @@ export default function ChatWidget() {
       {/* 灵动悬浮 / 提醒动画 */}
       <style>{`
         @keyframes cwIn{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:none}}
+        @keyframes cwInMobile{from{opacity:0;transform:translateY(100%)}to{opacity:1;transform:none}}
         @keyframes cwPing{0%{transform:scale(1);opacity:.5}70%{opacity:0}100%{transform:scale(1.9);opacity:0}}
         @keyframes cwHintIn{from{opacity:0;transform:translateX(10px) scale(.96)}to{opacity:1;transform:none}}
         @keyframes cwBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
       `}</style>
 
-      {/* 对话面板：手机近全屏 sheet，桌面右下浮窗 */}
+      {/* 对话面板：手机全屏 sheet，桌面右下浮窗 */}
       {open && (
         <div
           role="dialog"
           aria-label="巨鑫售前助理"
-          style={{ animation: 'cwIn .22s ease-out' }}
+          style={{
+            animation: isMobile ? 'cwInMobile .25s ease-out' : 'cwIn .22s ease-out',
+            ...(isMobile && vvHeight ? { height: vvHeight + 'px' } : {}),
+          }}
           className="
             fixed z-[1001] flex flex-col overflow-hidden text-white
-            inset-3 rounded-2xl
-            sm:inset-auto sm:right-6 sm:bottom-24 sm:h-[560px] sm:w-[370px] sm:max-h-[calc(100dvh-8rem)]
-            border border-white/15 bg-neutral-950/80 backdrop-blur-xl
-            shadow-[0_16px_50px_rgba(0,0,0,0.5)] sm:bg-neutral-950/60
+            inset-x-0 top-0 h-[100dvh] rounded-none border-0 bg-neutral-950/90
+            sm:inset-x-auto sm:top-auto sm:right-6 sm:bottom-24 sm:h-[560px] sm:w-[370px]
+            sm:max-h-[calc(100dvh-8rem)] sm:rounded-2xl sm:border sm:border-white/15 sm:bg-neutral-950/60
+            backdrop-blur-xl shadow-[0_16px_50px_rgba(0,0,0,0.5)]
           "
         >
           {/* 玻璃高光反射 */}
-          <div className="pointer-events-none absolute inset-0 rounded-2xl bg-[linear-gradient(120deg,rgba(255,255,255,0.14),rgba(255,255,255,0.02)_40%,transparent_60%)]" />
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,rgba(255,255,255,0.12),rgba(255,255,255,0.02)_40%,transparent_60%)]" />
 
           <div className="relative z-10 flex h-full flex-col">
             {/* 头部 */}
-            <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+            <div className="flex items-center justify-between border-b border-white/10 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.7)]" />
                 <span className="text-sm font-semibold">巨鑫售前助理 · Jason</span>
@@ -159,19 +207,20 @@ export default function ChatWidget() {
               )}
             </div>
 
-            {/* 输入区 —— text-base(16px) 防 iOS 聚焦缩放；底部留安全区 */}
+            {/* 输入区 —— 自动长高；text-base(16px) 防 iOS 缩放；底部安全区 */}
             <div className="flex items-end gap-2 border-t border-white/10 px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
               <textarea
+                ref={taRef}
                 rows={1}
-                placeholder="输入问题，Enter 发送…"
+                placeholder="输入问题…"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 disabled={loading}
                 className="
-                  max-h-24 flex-1 resize-none rounded-xl border border-white/15 bg-white/10
-                  px-3 py-2 text-base text-white placeholder-white/40 outline-none
-                  backdrop-blur transition focus:border-white/40 sm:text-sm
+                  max-h-[140px] min-h-[40px] flex-1 resize-none overflow-y-auto rounded-xl border border-white/15
+                  bg-white/10 px-3 py-2 text-base leading-relaxed text-white placeholder-white/40
+                  outline-none backdrop-blur transition focus:border-white/40 sm:text-sm
                 "
               />
               <button
@@ -196,12 +245,11 @@ export default function ChatWidget() {
           open ? 'hidden sm:flex' : 'flex'
         }`}
       >
-        {/* 提醒气泡：点文字开聊，点 × 关掉 */}
         {nudging && hint === 'shown' && (
           <div
             style={{ animation: 'cwHintIn .3s ease-out' }}
             className="
-              flex max-w-[70vw] items-center gap-1 whitespace-nowrap rounded-full
+              flex max-w-[80vw] items-center gap-1 whitespace-nowrap rounded-full
               border border-white/15 bg-neutral-900/75 py-2 pl-4 pr-2 text-sm text-white
               shadow-[0_8px_30px_rgba(0,0,0,0.3)] backdrop-blur-md
             "
@@ -213,7 +261,7 @@ export default function ChatWidget() {
               }}
               className="cursor-pointer truncate"
             >
-              👋 你好，我是 Jason
+              👋 你好，我是售前助理 Jason
             </button>
             <button
               onClick={() => setHint('dismissed')}
@@ -225,14 +273,20 @@ export default function ChatWidget() {
           </div>
         )}
 
-        {/* 悬浮圆钮（未打开时轻微跳动 + 脉冲光环，引起注意） */}
+        {/* 悬浮圆钮（未打开时：双层脉冲光环 + 轻微跳动，稍显眼但克制） */}
         <div className={nudging ? 'animate-[cwBob_2.8s_ease-in-out_infinite]' : ''}>
           <div className="relative">
             {nudging && (
-              <span
-                className="pointer-events-none absolute inset-0 rounded-full border border-white/40"
-                style={{ animation: 'cwPing 2.2s ease-out infinite' }}
-              />
+              <>
+                <span
+                  className="pointer-events-none absolute inset-0 rounded-full border border-white/45"
+                  style={{ animation: 'cwPing 2.2s ease-out infinite' }}
+                />
+                <span
+                  className="pointer-events-none absolute inset-0 rounded-full border border-white/30"
+                  style={{ animation: 'cwPing 2.2s ease-out infinite', animationDelay: '1.1s' }}
+                />
+              </>
             )}
             <button
               onClick={() => {
