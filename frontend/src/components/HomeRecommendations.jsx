@@ -57,8 +57,7 @@ export default function HomeRecommendations() {
         if (!alive) return
         setErr('Failed to load popular products.')
       } finally {
-        if (!alive) return
-        setLoading(false)
+        if (alive) setLoading(false)
       }
     })()
     return () => {

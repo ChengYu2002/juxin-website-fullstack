@@ -9,6 +9,8 @@
 // - 输入：自动长高；回车发送但尊重中文输入法组词（isComposing 不误发）
 
 import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import ReactMarkdown from 'react-markdown'
 import { MessageCircle, X, Send } from 'lucide-react'
 import { sendChat } from '../../services/chatService'
 
@@ -41,6 +43,35 @@ export default function ChatWidget() {
   const listRef = useRef(null)
   const cidRef = useRef(null)
   const taRef = useRef(null)
+  const navigate = useNavigate()
+
+  // 助手消息按 Markdown 渲染：站内链接（/products/...）点了走 SPA 跳转并收起面板
+  const mdComponents = {
+    a: ({ href, children }) => {
+      const internal = typeof href === 'string' && href.startsWith('/')
+      return (
+        <a
+          href={href}
+          target={internal ? undefined : '_blank'}
+          rel={internal ? undefined : 'noreferrer'}
+          onClick={(e) => {
+            if (internal) {
+              e.preventDefault()
+              setOpen(false)
+              navigate(href)
+            }
+          }}
+          className="font-medium text-sky-300 underline underline-offset-2 hover:text-sky-200"
+        >
+          {children}
+        </a>
+      )
+    },
+    p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+    ul: ({ children }) => <ul className="mb-2 list-disc space-y-0.5 pl-5 last:mb-0">{children}</ul>,
+    ol: ({ children }) => <ol className="mb-2 list-decimal space-y-0.5 pl-5 last:mb-0">{children}</ol>,
+    strong: ({ children }) => <strong className="font-semibold text-white">{children}</strong>,
+  }
 
   // 是否手机视口（< sm）
   useEffect(() => {
@@ -148,10 +179,10 @@ export default function ChatWidget() {
   const mobilePanelStyle =
     isMobile && open
       ? {
-          height: vp ? `${vp.height}px` : '100dvh',
-          transform: vp ? `translateY(${vp.offsetTop}px)` : undefined,
-          animation: 'cwFade .2s ease-out',
-        }
+        height: vp ? `${vp.height}px` : '100dvh',
+        transform: vp ? `translateY(${vp.offsetTop}px)` : undefined,
+        animation: 'cwFade .2s ease-out',
+      }
       : { animation: 'cwIn .22s ease-out' }
 
   return (
@@ -162,6 +193,12 @@ export default function ChatWidget() {
         @keyframes cwPing{0%{transform:scale(1);opacity:.5}70%{opacity:0}100%{transform:scale(1.9);opacity:0}}
         @keyframes cwHintIn{from{opacity:0;transform:translateX(10px) scale(.96)}to{opacity:1;transform:none}}
         @keyframes cwBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+        @keyframes cwDot{0%,70%,100%{transform:translateY(0);opacity:.4}35%{transform:translateY(-5px);opacity:.95}}
+        .cw-typing{display:inline-flex;align-items:flex-end;gap:4px;height:12px}
+        .cw-typing span{width:6px;height:6px;border-radius:9999px;background:currentColor;opacity:.4;animation:cwDot 1.1s ease-in-out infinite}
+        .cw-typing span:nth-child(2){animation-delay:.18s}
+        .cw-typing span:nth-child(3){animation-delay:.36s}
+        @media (prefers-reduced-motion: reduce){.cw-typing span{animation:none;opacity:.55}}
       `}</style>
 
       {/* 对话面板：手机全屏 sheet（跟随键盘），桌面右下浮窗 */}
@@ -202,21 +239,30 @@ export default function ChatWidget() {
               ref={listRef}
               className="flex flex-1 flex-col gap-2.5 overflow-y-auto overscroll-contain px-4 py-4 [scrollbar-color:rgba(255,255,255,0.25)_transparent] [scrollbar-width:thin]"
             >
-              {messages.map((m, i) => (
-                <div
-                  key={i}
-                  className={
-                    m.role === 'user'
-                      ? 'max-w-[85%] self-end whitespace-pre-wrap break-words rounded-2xl rounded-br-md bg-white px-3 py-2 text-sm leading-relaxed text-neutral-900 shadow-sm'
-                      : 'max-w-[85%] self-start whitespace-pre-wrap break-words rounded-2xl rounded-bl-md border border-white/10 bg-white/10 px-3 py-2 text-sm leading-relaxed text-white/90'
-                  }
-                >
-                  {m.content}
-                </div>
-              ))}
+              {messages.map((m, i) =>
+                m.role === 'user' ? (
+                  <div
+                    key={i}
+                    className="max-w-[85%] self-end whitespace-pre-wrap break-words rounded-2xl rounded-br-md bg-white px-3 py-2 text-sm leading-relaxed text-neutral-900 shadow-sm"
+                  >
+                    {m.content}
+                  </div>
+                ) : (
+                  <div
+                    key={i}
+                    className="max-w-[85%] self-start break-words rounded-2xl rounded-bl-md border border-white/10 bg-white/10 px-3 py-2 text-sm leading-relaxed text-white/90 [&_a]:break-all"
+                  >
+                    <ReactMarkdown components={mdComponents}>{m.content}</ReactMarkdown>
+                  </div>
+                ),
+              )}
               {loading && (
-                <div className="max-w-[85%] self-start rounded-2xl rounded-bl-md border border-white/10 bg-white/5 px-3 py-2 text-sm italic text-white/50">
-                  Jason 正在输入…
+                <div className="max-w-[85%] self-start rounded-2xl rounded-bl-md border border-white/10 bg-white/10 px-4 py-3 text-white/70">
+                  <span className="cw-typing" role="status" aria-label="Jason 正在输入">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </span>
                 </div>
               )}
               {error && (
