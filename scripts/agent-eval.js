@@ -101,6 +101,16 @@ const CHECKS = {
     const wrong = ids.filter((id) => ctx.byId.get(id)?.category !== a)
     return wrong.length ? `推了非 ${a} 的: ${wrong.join(',')}` : true
   },
+  // 回复里列的产品是否都真有该颜色(抓"上一轮列表被贴新颜色标签"的多轮 bug)
+  allHaveColor: (reply, color, ctx) => {
+    const ids = [...new Set(productIdsIn(reply))]
+    if (!ids.length) return '没列出任何产品'
+    const bad = ids.filter((id) => {
+      const p = ctx.byId.get(id)
+      return !p || !(p.variants || []).some((v) => lc(v.label).includes(lc(color)))
+    })
+    return bad.length ? `这些其实没 ${color}: ${bad.join(',')}` : true
+  },
   handoff: (reply) => (HANDOFF.some((w) => has(reply, w)) ? true : '未引导留资/转人工'),
   noPrice: (reply) => {
     const hit = PRICE_WORDS.filter((w) => has(reply, w))
@@ -147,6 +157,8 @@ const CASES = [
   { id: 'D5-camping', g: 'D推荐', input: '有没有露营拖车', checks: [{ t: 'inCategory', cat: 'camping-wagon' }, { t: 'noFakeLink' }] },
   { id: 'D6-moq-agg', g: 'D推荐', input: '你们最小起订量都是多少', checks: [{ t: 'containsAll', v: ['1000'] }, { t: 'noFakeLink' }] },
   { id: 'D7-diff', g: 'D推荐', input: '购物手推车和多用途手推车有什么区别', checks: [{ t: 'containsAny', v: ['袋', 'bag'] }] },
+  // 多用途含 JX-25ZP(MOQ2000)，问 MOQ 不能笼统说"都是1000"→必须同时出现 1000 和 2000
+  { id: 'D8-moq-mixed', g: 'D推荐', input: '多用途手推车都有哪些？MOQ 分别是多少', checks: [{ t: 'containsAll', v: ['1000', '2000'] }, { t: 'noFakeLink' }] },
 
   // E 语言
   { id: 'E1-en-nocjk', g: 'E语言', input: 'recommend a couple of shopping trolleys', checks: [{ t: 'noCJK' }, { t: 'noFakeLink' }] },
@@ -164,6 +176,8 @@ const CASES = [
   { id: 'G1-followup', g: 'G多轮', turns: ['推荐两款购物手推车', '第一款的MOQ是多少'], checks: [{ t: 'containsAll', v: ['1000'] }, { t: 'noFakeLink' }] },
   // JX-160SP 只有黑色；指代解析对了就会提到"黑/black"(标签会本地化,不比英文原文)
   { id: 'G2-pronoun', g: 'G多轮', turns: ['介绍下 JX-160SP', '它有几种颜色'], checks: [{ t: 'containsAny', v: ['黑', 'black'] }, { t: 'noFakeLink' }] },
+  // 多轮换色：第2轮"蓝色的有吗"不能把第1轮的绿色列表贴成蓝色(必须重查库)——列的都得真有蓝
+  { id: 'G3-colorswitch', g: 'G多轮', turns: ['给我推荐绿色的购物车', '蓝色的有吗'], checks: [{ t: 'allHaveColor', color: 'blue' }, { t: 'noFakeLink' }] },
 
   // H 复杂 / 比较
   { id: 'H1-compare', g: 'H复杂', input: '比较 JX-160SP 和 JX-80SP 的每箱装箱量', checks: [{ t: 'facts', id: 'jx-160sp', fields: ['pcsPerCarton'] }, { t: 'facts', id: 'jx-80sp', fields: ['pcsPerCarton'] }, { t: 'noFakeLink' }] },
@@ -218,7 +232,11 @@ async function run() {
     for (const ck of c.checks) {
       // 各 check 的第二参不同：facts 用整个 ck / inCategory 用 cat / staysInRole 用 forbid / 其余用 v
       const arg =
-        ck.t === 'facts' ? ck : ck.t === 'inCategory' ? ck.cat : ck.t === 'staysInRole' ? ck.forbid : ck.v
+        ck.t === 'facts' ? ck
+        : ck.t === 'inCategory' ? ck.cat
+        : ck.t === 'allHaveColor' ? ck.color
+        : ck.t === 'staysInRole' ? ck.forbid
+        : ck.v
       const r = CHECKS[ck.t](reply, arg, ctx)
       if (r !== true) problems.push(`${ck.t}: ${r}`)
     }

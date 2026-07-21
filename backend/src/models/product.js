@@ -60,7 +60,11 @@ const specsSchema = new mongoose.Schema(
     netWeight: { type: String, trim: true }, // eg. "17.5 kg"
     grossWeight: { type: String, trim: true },
     wheelSize: { type: String, trim: true }, // eg. "90 mm"
-    containerLoad: { type: String, trim: true } // eg. "20GP: 1242 pcs \n 40GP: 2574 pcs \n 40HQ: 3018 pcs"
+    containerLoad: { type: String, trim: true }, // eg. "20GP: 1242 pcs \n 40GP: 2574 pcs \n 40HQ: 3018 pcs"
+
+    // 新增（都可选，空=未填，前端/工具都会跳过不显示）
+    loadCapacity: { type: String, trim: true }, // 承重/额定载重, eg. "150 kg"
+    material: { type: String, trim: true } // 材料, eg. "Aluminum alloy / 铝合金"
   },
 
   { _id: false } // 不需要为子文档生成_id
@@ -119,6 +123,17 @@ const productSchema = new mongoose.Schema(
 
     // 规格
     specs: { type: specsSchema, default: () => ({}) },
+
+    // 结构化特征标签（可选，空数组=未填；前端空则不显示）。用一个数组装所有布尔特征，避免每加一个特征就加一列。
+    features: {
+      type: [
+        {
+          type: String,
+          enum: ['foldable', 'brake', 'adjustable-handle', 'telescopic', 'detachable-basket', 'waterproof'],
+        },
+      ],
+      default: [],
+    },
 
     // 推荐部分 (运营字段)
     isPopular: { type: Boolean, default: false, index: true },
