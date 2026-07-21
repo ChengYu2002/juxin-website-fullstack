@@ -346,6 +346,8 @@ export default function ProductEdit() {
             pcsPerCarton: toIntOrNull(product.specs?.pcsPerCarton) ?? 0,
           },
 
+          features: Array.isArray(product.features) ? product.features : [],
+
           variants: (product.variants || []).map((v) => ({
             key: String(v.code || '')
               .trim()

@@ -21,7 +21,10 @@ export function emptyProduct() {
       grossWeight: '',
       wheelSize: '',
       containerLoad: '',
+      loadCapacity: '', // 承重
+      material: '', // 材料
     },
+    features: [], // 结构化特征标签（可选）
     variants: [],
     mongoId: '',
     createdAt: '',
@@ -56,6 +59,9 @@ export function normalizeProductData(p) {
     // ✅ 表单数字字段：转字符串
     moq: toNumberString(p?.moq),
     sortOrder: toNumberString(p?.sortOrder),
+
+    // ✅ features 一定是数组
+    features: Array.isArray(p?.features) ? p.features : [],
 
     variants: Array.isArray(p?.variants)
       ? p.variants.map((v) => ({

@@ -8,27 +8,40 @@ const { listPublic, getPublicByIdOrSlug } = require('../services/productService'
 
 const CATEGORIES = ['shopping-trolley', 'utility-trolley', 'camping-wagon', 'outdoor-furniture']
 
-// 单个产品瘦身：规格全给（这些正是要答的真值），颜色只给名字，丢掉 images/时间戳
+// 有值才算数：空串/undefined/null/数字0 都视为"未填"
+function has(v) {
+  return v !== undefined && v !== null && v !== '' && !(typeof v === 'number' && v === 0)
+}
+
+// 单个产品瘦身：规格只给"填过的"字段（空的整个剔掉，别让模型看到空值去瞎补），颜色只给名字，丢掉 images/时间戳
 function trimProduct(d) {
   const s = d.specs || {}
-  return {
+  const specEntries = {
+    maxSize: s.maxSize,
+    foldedSize: s.foldedSize,
+    cartonSize: s.cartonSize,
+    pcsPerCarton: s.pcsPerCarton, // 每箱装箱量
+    netWeight: s.netWeight,
+    grossWeight: s.grossWeight,
+    wheelSize: s.wheelSize,
+    containerLoad: s.containerLoad, // 集装箱装载 20GP/40GP/40HQ
+    loadCapacity: s.loadCapacity, // 承重/额定载重
+    material: s.material, // 材料
+  }
+  const specs = {}
+  for (const [k, v] of Object.entries(specEntries)) if (has(v)) specs[k] = v
+
+  const out = {
     id: d.id,
     name: d.name,
     category: d.category,
     path: `/products/${d.id}`, // 产品页链接，供助理原样附上（不靠模型自己拼）
     moq: d.moq,
     colors: (d.variants || []).map((v) => v.label),
-    specs: {
-      maxSize: s.maxSize,
-      foldedSize: s.foldedSize,
-      cartonSize: s.cartonSize,
-      pcsPerCarton: s.pcsPerCarton, // 每箱装箱量
-      netWeight: s.netWeight,
-      grossWeight: s.grossWeight,
-      wheelSize: s.wheelSize,
-      containerLoad: s.containerLoad, // 集装箱装载 20GP/40GP/40HQ
-    },
   }
+  if (Object.keys(specs).length) out.specs = specs
+  if (Array.isArray(d.features) && d.features.length) out.features = d.features // 结构化特征(可折叠/带刹车等)，空则不给
+  return out
 }
 
 const searchProducts = tool(

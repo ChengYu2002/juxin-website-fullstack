@@ -30,7 +30,7 @@ const toolNode = new ToolNode(tools)
 // 产品类意图：命中就强制第一轮调工具，杜绝"跳过工具直接编产品"。
 // 正则只是"尽量多命中"，真正的兜底是下面 runAgent 里的链接对库校验。
 const PRODUCT_HINT =
-  /推荐|有哪些|哪些|哪款|哪种|哪个|几款|选择|适合|型号|规格|参数|moq|起订|装箱|装柜|集装箱|尺寸|重量|净重|毛重|承重|载|轮|颜色|折叠|手推车|购物车|拖车|推车|产品|买菜|购物|逛超市|搬家|搬运|搬东西|搬|重物|大件|用啥|用什么|trolley|cart|wagon|jx[-\s]?\w/i
+  /推荐|有哪些|哪些|哪款|哪种|哪个|几款|选择|适合|有没有|有吗|型号|规格|参数|moq|起订|装箱|装柜|集装箱|尺寸|重量|净重|毛重|承重|载|轮|颜色|红色|橙色|黄色|绿色|蓝色|青色|紫色|黑色|白色|灰色|粉色|棕色|折叠|手推车|购物车|拖车|推车|产品|买菜|购物|逛超市|搬家|搬运|搬东西|搬|重物|大件|用啥|用什么|trolley|cart|wagon|red|orange|yellow|green|blue|purple|black|white|gr[ea]y|pink|brown|jx[-\s]?\w/i
 
 function latestUserText(msgs) {
   for (let i = msgs.length - 1; i >= 0; i--) {

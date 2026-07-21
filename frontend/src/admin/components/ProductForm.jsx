@@ -5,6 +5,16 @@ import VariantImageUploader from './ImageUploader'
 const ENABLE_MANUAL_URL =
   import.meta.env.VITE_ENABLE_MANUAL_IMAGE_URL === 'true'
 
+// 结构化特征选项（值须和后端 schema 的 features enum 一致）
+const FEATURE_OPTIONS = [
+  { value: 'foldable', label: '可折叠 Foldable' },
+  { value: 'brake', label: '带刹车 Brake' },
+  { value: 'adjustable-handle', label: '把手可调 Adjustable handle' },
+  { value: 'telescopic', label: '伸缩 Telescopic' },
+  { value: 'detachable-basket', label: '可拆篮 Detachable basket' },
+  { value: 'waterproof', label: '防水 Waterproof' },
+]
+
 export default function ProductForm({
   product,
   setField,
@@ -24,6 +34,12 @@ export default function ProductForm({
   onVariantImageRemove,
   runCloudTask,
 }) {
+  const features = Array.isArray(product.features) ? product.features : []
+  const toggleFeature = (val) => {
+    const next = features.includes(val) ? features.filter((f) => f !== val) : [...features, val]
+    setField('features', next)
+  }
+
   return (
     <>
       {/* ===== Basic Fields ===== */}
@@ -247,6 +263,26 @@ export default function ProductForm({
             />
           </label>
 
+          <label className="space-y-1">
+            <div className="text-sm text-gray-700">Load Capacity 承重（选填）</div>
+            <input
+              className="w-full border rounded p-2 text-sm"
+              value={product.specs?.loadCapacity || ''}
+              onChange={(e) => setSpecsField('loadCapacity', e.target.value)}
+              placeholder='e.g. "150 kg"'
+            />
+          </label>
+
+          <label className="space-y-1">
+            <div className="text-sm text-gray-700">Material 材料（选填）</div>
+            <input
+              className="w-full border rounded p-2 text-sm"
+              value={product.specs?.material || ''}
+              onChange={(e) => setSpecsField('material', e.target.value)}
+              placeholder='e.g. "Aluminum alloy / 铝合金"'
+            />
+          </label>
+
           <label className="space-y-1 md:col-span-2">
             <div className="text-sm text-gray-700">Container Load 集装箱</div>
             <textarea
@@ -258,6 +294,23 @@ export default function ProductForm({
               }
             />
           </label>
+
+          {/* 结构化特征（选填，多选）——留空则前台/AI 都不显示 */}
+          <div className="space-y-2 md:col-span-2">
+            <div className="text-sm text-gray-700">Features 特征（选填，可多选）</div>
+            <div className="flex flex-wrap gap-x-6 gap-y-2">
+              {FEATURE_OPTIONS.map((o) => (
+                <label key={o.value} className="flex items-center gap-2 whitespace-nowrap">
+                  <input
+                    type="checkbox"
+                    checked={features.includes(o.value)}
+                    onChange={() => toggleFeature(o.value)}
+                  />
+                  <span className="text-sm text-gray-700">{o.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
