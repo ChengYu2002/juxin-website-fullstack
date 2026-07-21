@@ -2,6 +2,7 @@
 // 作用：处理 product 的业务逻辑：返回结果、数据操作、CRUD。
 const Product = require('../models/product')
 const { deleteBatchByUrls } = require('./uploadController')
+const { listPublic, getPublicByIdOrSlug } = require('../services/productService')
 
 /**
  * =========================
@@ -13,16 +14,8 @@ const { deleteBatchByUrls } = require('./uploadController')
 // GET /api/products?category=shopping-trolley
 const getPublicProducts = async (req, res, next) => {
   try {
-    const { category } = req.query
-    const filter = { isActive: true }
-
-    if (category) {
-      filter.category = category
-    }
-
-    const products = await Product.find(filter).sort({ sortOrder: -1, createdAt: -1 })
+    const products = await listPublic({ category: req.query.category })
     res.json(products)
-
   } catch (error) {
     next(error)
   }
@@ -33,25 +26,11 @@ const getPublicProducts = async (req, res, next) => {
 // GET /api/products/:idorSlug
 const getPublicProductByIdorSlug = async (req, res, next) => {
   try {
-    // 从 URL 参数中获取 id 或 slug, {}: 解构赋值重命名
-    const { idorSlug }  = req.params
-
-    // 先按业务 id 查（JX-25ZP）
-    let product = await Product.findOne({ id: idorSlug })
-    // 如果没找到，再按 slug 查（jx-25zp）
-    if (!product) {
-      product = await Product.findOne({ slug: idorSlug })
-    }
-    // 仍然没找到，返回 404
+    // 下架产品视为不存在，统一 404（逻辑收敛到 productService）
+    const product = await getPublicByIdOrSlug(req.params.idorSlug)
     if (!product) {
       return res.status(404).json({ ok: false, error: 'Product not found' })
     }
-
-    // ❗ public 访问不允许看到下架产品
-    if (!product.isActive) {
-      return res.status(404).json({ ok: false, error: 'Product not found' })
-    }
-
     res.json(product)
   } catch (error) {
     next(error)

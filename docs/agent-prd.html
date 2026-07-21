@@ -328,10 +328,10 @@
     <p class="lede">一个扎根真实产品库、能精确答规格、并把高意向访客沉淀为结构化询盘的 B2B 售前助理 —— 严格止步于报价/库存/交期之前。</p>
     <div class="meta">
       <span><b>项目</b> Juxin Manufacturing</span>
-      <span><b>版本</b> v0.1</span>
-      <span><b>状态</b> Draft</span>
+      <span><b>版本</b> v0.2</span>
+      <span><b>状态</b> P2 已实现（防幻觉原 P3 随手完成）</span>
       <span><b>分支</b> dev-v3-agent</span>
-      <span><b>日期</b> 2026-07-13</span>
+      <span><b>日期</b> 2026-07-20</span>
     </div>
   </header>
 
@@ -615,16 +615,28 @@
       </table>
     </div>
     <p>用 <strong>OpenAI 兼容 SDK</strong> 写,endpoint 可换 —— "模型无关、可切换"本身是工程加分点。</p>
+    <div class="callout">
+      <span class="tag">实际落地（v0.2）</span>
+      <p>最终用 <strong>阿里云 DashScope · Qwen</strong>（OpenAI 兼容端点）——因为<strong>部署位置</strong>决定可用性：原计划的 Gemini/Groq 在国内不可达。主线用 <code>qwen-plus</code>（tool calling 可靠）；<strong>纯寒暄走 <code>qwen-flash</code> 快车道</strong>（~0.9s）做速度分级。实测：<code>qwen-flash</code> 对"推荐"类软请求会跳工具、编假型号，故产品路线必须用 plus。换模型只改 3 个 env。<strong>省钱更快的候选</strong>：<code>deepseek-v4-flash</code>（便宜、支持 tool calling、有 prompt 缓存正好治"大 prompt 每轮发两遍"）—— 但换模型前<strong>必须跑 eval 防幻觉倒退</strong>。</p>
+    </div>
   </section>
 
   <section id="s10">
     <h2 class="sec"><span class="num">10</span>防幻觉与安全边界</h2>
+    <p class="sec-note">实际落地成<strong>防御纵深四道</strong>（单一措施都堵不死 LLM 编造，详见架构讲解页）：</p>
     <ul class="tight">
-      <li><strong>数字只用工具返回值</strong> —— system prompt 明令"不得自行编造规格/价格/交期"。</li>
-      <li><strong>越界即转人工</strong> —— 价格/库存/交期/下单一律引导提交询盘,给出统一话术。</li>
-      <li><strong>写询盘有守卫</strong> —— <code>createInquiry</code> 需 name + email 才允许,防止误触发。</li>
-      <li><strong>输入清洗</strong> —— 沿用现有 inquiry 校验;注意 prompt 注入,只信任工具/资料内容。</li>
+      <li><strong>① 强制工具</strong> —— 产品意图命中就 <code>tool_choice:'required'</code>，逼模型必须查库、不许凭感觉编型号。</li>
+      <li><strong>② 工具返回瘦身</strong> —— 搜索列表只给型号/链接/热销/MOQ，颜色/尺寸等易串的数字只从单条 <code>getProduct</code> 取，防多条间张冠李戴。</li>
+      <li><strong>③ Prompt 收紧 + temperature 0</strong> —— 只准说工具返回的字段，功能/卖点一律不许编；越界(价格/库存/交期)硬转人工留资。</li>
+      <li><strong>④ 出口链接对库校验（最硬）</strong> —— 回复发出前把每个 <code>/products/&lt;id&gt;</code> 拿去库里核，有假链接→强制重试→仍假则安全兜底。<strong>假链接绝对到不了用户</strong>，不依赖"永远堵不全"的关键词正则。</li>
+      <li><strong>语言一致</strong> —— 每轮按买家语言在末尾追加强指令，防中英混排/语言跑偏。</li>
+      <li><strong>防注入</strong> —— system prompt 后端注入，前端只发消息内容，只信任工具返回。</li>
+      <li><strong>无关/敏感话题不涉入</strong> —— 政治/地缘(台湾)/宗教/医疗/其他公司/编程等一律<strong>不表态、不展开</strong>，礼貌转回产品；情绪(如分手)先一句共情再温和转回。检测→固定挡回，<strong>绝不让模型自由生成敏感内容</strong>。(临时 prompt 版已生效；未来由 flash 路由 off-topic 三档更彻底。)</li>
     </ul>
+    <div class="callout">
+      <span class="tag">诚实的局限 & 优雅方向</span>
+      <p>现在这套有效但是"反应式打地鼠"。更优雅 = <strong>"LLM 只选、代码渲染真值"</strong>：LLM 只输出要推荐的产品 id，后端按 id 从库取真实名/链接/规格由代码渲染，LLM 结构上没机会吐假产品，可替掉大半补丁。列为 P3 重构方向。</p>
+    </div>
   </section>
 
   <section id="s11">
@@ -674,13 +686,13 @@
     <h2 class="sec"><span class="num">14</span>开发里程碑 (P0 → P8)</h2>
     <p class="sec-note">从零学 Agent 的爬坡顺序。总时长:专注 ~1 周 / 下班式 ~2–3 周。</p>
     <div class="timeline">
-      <div class="phase"><div class="pn">P0</div><div><p class="pt">练手沙盒(一次性)</p><p class="pd">独立小脚本,用免费 API 让模型调用一个假工具,亲眼看懂"模型→工具→喂回→回答"循环。</p><div class="pmeta"><span class="chip learn">学:tool calling 消息格式 + 循环</span><span class="chip">~0.5 天</span></div></div></div>
-      <div class="phase"><div class="pn">P1</div><div><p class="pt">基础对话</p><p class="pd">Juxin 加 /api/chat(先不接工具)+ 最简聊天气泡。先让它会说话。</p><div class="pmeta"><span class="chip learn">学:前后端聊天链路 · 流式</span><span class="chip">1–2 天</span></div></div></div>
-      <div class="phase"><div class="pn">P2</div><div><p class="pt">接工具 · 核心 ★</p><p class="pd">用 LangGraph 编排,把现有产品接口包成 tool,让它真的查库回答规格。</p><div class="pmeta"><span class="chip learn">学:tool schema · LangGraph · 浅循环</span><span class="chip">2–4 天</span></div></div></div>
-      <div class="phase"><div class="pn">P3</div><div><p class="pt">防幻觉 + 护栏</p><p class="pd">写 system prompt:身份、数字只用工具值、越界转人工。</p><div class="pmeta"><span class="chip learn">学:prompt 工程 · 边界控制</span><span class="chip">1 天</span></div></div></div>
+      <div class="phase"><div class="pn">P0</div><div><p class="pt">✅ 练手沙盒(一次性)</p><p class="pd">独立小脚本,用免费 API 让模型调用一个假工具,亲眼看懂"模型→工具→喂回→回答"循环。<em>（已完成，脚本 gitignore 不入库。）</em></p><div class="pmeta"><span class="chip learn">学:tool calling 消息格式 + 循环</span><span class="chip">~0.5 天</span></div></div></div>
+      <div class="phase"><div class="pn">P1</div><div><p class="pt">✅ 基础对话</p><p class="pd">Juxin 加 /api/chat + 深色玻璃聊天气泡。<em>（已完成并浏览器实测。）</em></p><div class="pmeta"><span class="chip learn">学:前后端聊天链路</span><span class="chip">1–2 天</span></div></div></div>
+      <div class="phase"><div class="pn">P2</div><div><p class="pt">✅ 接工具 · 核心 ★</p><p class="pd">LangGraph StateGraph(agent+ToolNode+条件边)把 searchProducts/getProduct 包成 tool 查库答规格。<em>（已完成端到端实测。附带做了：颜色搜、品类区分、推荐带真实链接、语言一致、简洁+flash 寒暄快车道。）</em></p><div class="pmeta"><span class="chip learn">学:tool schema · LangGraph · 循环</span><span class="chip">2–4 天</span></div></div></div>
+      <div class="phase"><div class="pn">P3</div><div><p class="pt">🟡 防幻觉 + 护栏（大部分随 P2 完成）</p><p class="pd">已实现<strong>防御纵深四道</strong>：强制 tool_choice + 工具返回瘦身 + prompt"只说工具字段" + <strong>出口链接对库校验+重试+兜底</strong>；越界(价格/交期)硬转人工。<em>剩余：eval 固化 + 考虑重构成"LLM 选 id、代码渲染真值"（详见架构讲解页）。</em></p><div class="pmeta"><span class="chip learn">学:prompt 工程 · 边界 · 防御纵深</span><span class="chip">1 天</span></div></div></div>
       <div class="phase"><div class="pn">P4</div><div><p class="pt">记忆 + 抓询盘 · 闭环 ★</p><p class="pd">conversationId 存 Mongo;create_inquiry 工具,信息够了落结构化询盘并关联对话。</p><div class="pmeta"><span class="chip learn">学:把 Agent 接进真实业务动作</span><span class="chip">1–2 天</span></div></div></div>
       <div class="phase"><div class="pn">P5</div><div><p class="pt">RAG + 向量库 ★</p><p class="pd">公司软信息切块 → Atlas Vector Search → 检索注入 + 小评估。(为 RAG/向量库关键词升级)</p><div class="pmeta"><span class="chip learn">学:embedding · 检索 · 评估</span><span class="chip">1–2 天</span></div></div></div>
-      <div class="phase"><div class="pn">P6</div><div><p class="pt">严肃信号</p><p class="pd">20–30 条 eval 集(报准确率)+ 对话/工具日志接进 admin 后台。</p><div class="pmeta"><span class="chip learn">学:评估思维 · 可观测性</span><span class="chip">1–2 天</span></div></div></div>
+      <div class="phase"><div class="pn">P6</div><div><p class="pt">🟡 严肃信号（eval 已提前做）</p><p class="pd">已做：<code>scripts/agent-eval.js</code> —— <strong>35 条行为回归 eval</strong>，打 /api/chat + 确定性断言 + 出分；<strong>真值从数据库现取自推</strong>(facts)，一条命令红绿一眼见。<em>剩余：对话/工具日志接进 admin 后台。</em></p><div class="pmeta"><span class="chip learn">学:评估思维 · 可观测性</span><span class="chip">1–2 天</span></div></div></div>
       <div class="phase"><div class="pn">P7</div><div><p class="pt">部署</p><p class="pd">免费模型 key 配到 Render 环境变量,上线。</p><div class="pmeta"><span class="chip learn">学:密钥管理 · 部署</span><span class="chip">~0.5 天</span></div></div></div>
       <div class="phase"><div class="pn">P8</div><div><p class="pt">MCP(拉伸)</p><p class="pd">工具封装成 MCP server,agent 经协议消费。前沿加分,排最后。</p><div class="pmeta"><span class="chip learn">学:MCP 协议 · 服务解耦</span><span class="chip">1–2 天</span></div></div></div>
     </div>
