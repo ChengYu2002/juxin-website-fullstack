@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<title>巨鑫售前 AI 助理 · Agent 架构讲解</title>
+<style>
+  :root {
+    --bg: #f3f5f7;
+    --surface: #ffffff;
+    --surface-2: #eef1f4;
+    --ink: #191d24;
+    --muted: #5c6675;
+    --faint: #8a94a3;
+    --border: #dde2e8;
+    --accent: #0d9488;         /* teal — agent / 主线 */
+    --accent-soft: #d5efec;
+    --tool: #b45309;           /* amber — 工具 / 数据 */
+    --tool-soft: #f6e6cf;
+    --node-fe: #4f46e5;        /* indigo — 前端 */
+    --node-fe-soft: #e4e3fb;
+    --good: #0f766e;
+    --warn: #b45309;
+    --shadow: 0 1px 2px rgba(20,26,34,.05), 0 8px 24px rgba(20,26,34,.06);
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1015;
+      --surface: #151a21;
+      --surface-2: #1b222b;
+      --ink: #e7ebf0;
+      --muted: #9aa4b2;
+      --faint: #6b7686;
+      --border: #262e39;
+      --accent: #2dd4bf;
+      --accent-soft: #123833;
+      --tool: #f0a54a;
+      --tool-soft: #3a2c17;
+      --node-fe: #a5a0fb;
+      --node-fe-soft: #23223f;
+      --good: #2dd4bf;
+      --warn: #f0a54a;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f3f5f7; --surface: #ffffff; --surface-2: #eef1f4; --ink: #191d24;
+    --muted: #5c6675; --faint: #8a94a3; --border: #dde2e8;
+    --accent: #0d9488; --accent-soft: #d5efec; --tool: #b45309; --tool-soft: #f6e6cf;
+    --node-fe: #4f46e5; --node-fe-soft: #e4e3fb; --good: #0f766e; --warn: #b45309;
+    --shadow: 0 1px 2px rgba(20,26,34,.05), 0 8px 24px rgba(20,26,34,.06);
+  }
+  :root[data-theme="dark"] {
+    --bg: #0d1015; --surface: #151a21; --surface-2: #1b222b; --ink: #e7ebf0;
+    --muted: #9aa4b2; --faint: #6b7686; --border: #262e39;
+    --accent: #2dd4bf; --accent-soft: #123833; --tool: #f0a54a; --tool-soft: #3a2c17;
+    --node-fe: #a5a0fb; --node-fe-soft: #23223f; --good: #2dd4bf; --warn: #f0a54a;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  .wrap {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    padding: clamp(1.1rem, 4vw, 3rem) clamp(1rem, 4vw, 2rem) 5rem;
+  }
+  .col { max-width: 880px; margin: 0 auto; }
+  .prose { max-width: 68ch; }
+
+  h1 { font-size: clamp(1.7rem, 5vw, 2.5rem); font-weight: 800; letter-spacing: -.02em; line-height: 1.1; text-wrap: balance; margin: .2rem 0 .5rem; }
+  h2 { font-size: clamp(1.25rem, 3.2vw, 1.6rem); font-weight: 750; letter-spacing: -.01em; margin: 0 0 .2rem; text-wrap: balance; }
+  h3 { font-size: 1.02rem; font-weight: 700; margin: 0 0 .35rem; }
+  p { margin: .5rem 0; color: var(--ink); }
+  .lede { font-size: 1.1rem; color: var(--muted); max-width: 60ch; }
+  .eyebrow { font-family: var(--mono); font-size: .72rem; letter-spacing: .16em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+  code, .mono { font-family: var(--mono); font-size: .86em; }
+  :not(pre) > code { background: var(--surface-2); padding: .1em .4em; border-radius: 5px; border: 1px solid var(--border); color: var(--ink); }
+  a { color: var(--accent); }
+
+  section { margin-top: clamp(2.4rem, 6vw, 3.6rem); }
+  .sec-head { display: flex; align-items: baseline; gap: .7rem; margin-bottom: 1.1rem; padding-bottom: .6rem; border-bottom: 1px solid var(--border); }
+  .sec-num { font-family: var(--mono); font-size: .8rem; color: var(--faint); font-weight: 600; }
+
+  /* header meta strip */
+  .meta { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1.1rem; }
+  .chip { font-family: var(--mono); font-size: .74rem; padding: .28rem .6rem; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); }
+  .chip b { color: var(--ink); font-weight: 700; }
+
+  /* flow diagram */
+  .flow { display: flex; flex-direction: column; gap: 0; }
+  .node { position: relative; background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--layer, var(--accent)); border-radius: 12px; padding: .85rem 1rem; box-shadow: var(--shadow); }
+  .node .role { font-family: var(--mono); font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; color: var(--layer, var(--accent)); font-weight: 700; }
+  .node .file { font-family: var(--mono); font-size: .82rem; color: var(--ink); font-weight: 600; margin: .1rem 0 .25rem; word-break: break-all; }
+  .node .desc { font-size: .9rem; color: var(--muted); margin: 0; }
+  .arrow { align-self: center; color: var(--faint); font-size: 1.1rem; line-height: 1; padding: .35rem 0; }
+  .layer-fe { --layer: var(--node-fe); }
+  .layer-agent { --layer: var(--accent); }
+  .layer-tool { --layer: var(--tool); }
+
+  .loop { margin: .5rem 0 .5rem; align-self: stretch; border: 1px dashed var(--accent); background: var(--accent-soft); border-radius: 12px; padding: .7rem .9rem; font-size: .88rem; color: var(--ink); }
+  .loop b { color: var(--accent); }
+
+  /* file cards grid */
+  .grid { display: grid; grid-template-columns: 1fr; gap: .8rem; }
+  @media (min-width: 640px) { .grid.two { grid-template-columns: 1fr 1fr; } }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; box-shadow: var(--shadow); }
+  .card .path { font-family: var(--mono); font-size: .82rem; font-weight: 700; color: var(--ink); word-break: break-all; }
+  .tag { display: inline-block; font-family: var(--mono); font-size: .64rem; letter-spacing: .08em; text-transform: uppercase; padding: .12rem .45rem; border-radius: 5px; font-weight: 700; vertical-align: middle; margin-left: .4rem; }
+  .tag.new { background: var(--accent-soft); color: var(--good); }
+  .tag.chg { background: var(--tool-soft); color: var(--tool); }
+  .tag.dead { background: var(--surface-2); color: var(--faint); }
+  .card p { font-size: .9rem; color: var(--muted); margin: .5rem 0 0; }
+
+  /* concept blocks */
+  .concept { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1rem 1.1rem; box-shadow: var(--shadow); }
+  .concept + .concept { margin-top: .8rem; }
+  .concept p { font-size: .94rem; color: var(--muted); }
+  .concept p strong { color: var(--ink); }
+
+  pre { background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: .8rem 1rem; overflow-x: auto; font-family: var(--mono); font-size: .82rem; line-height: 1.55; color: var(--ink); margin: .6rem 0 0; }
+
+  /* gotchas */
+  .gotcha { display: flex; gap: .7rem; padding: .85rem 1rem; border-radius: 10px; background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--warn); box-shadow: var(--shadow); }
+  .gotcha + .gotcha { margin-top: .7rem; }
+  .gotcha .mark { color: var(--warn); font-weight: 800; font-family: var(--mono); flex: none; }
+  .gotcha div p { margin: 0; font-size: .92rem; }
+  .gotcha .t { font-weight: 700; color: var(--ink); }
+  .gotcha .d { color: var(--muted); margin-top: .15rem; }
+
+  /* Q&A */
+  .qa { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow); overflow: hidden; }
+  .qa + .qa { margin-top: .7rem; }
+  .qa summary { cursor: pointer; padding: .85rem 1rem; font-weight: 650; font-size: .98rem; list-style: none; display: flex; gap: .6rem; align-items: baseline; }
+  .qa summary::-webkit-details-marker { display: none; }
+  .qa summary .q { font-family: var(--mono); color: var(--accent); font-weight: 700; flex: none; }
+  .qa[open] summary { border-bottom: 1px solid var(--border); }
+  .qa .a { padding: .85rem 1rem 1rem; font-size: .93rem; color: var(--muted); }
+  .qa .a strong { color: var(--ink); }
+  .qa summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+  ul.tight { margin: .4rem 0 0; padding-left: 1.1rem; }
+  ul.tight li { margin: .25rem 0; font-size: .92rem; color: var(--muted); }
+  ul.tight li strong { color: var(--ink); }
+
+  .foot { margin-top: 3.5rem; padding-top: 1.2rem; border-top: 1px solid var(--border); color: var(--faint); font-size: .82rem; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .node, .card, .concept, .gotcha, .qa { animation: rise .5s cubic-bezier(.2,.7,.3,1) both; }
+    @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  }
+</style>
+
+<div class="wrap">
+<div class="col">
+
+  <header>
+    <div class="eyebrow">Juxin 售前助理 · P2 / P2.5</div>
+    <h1>Jason 是怎么"查着库说话"的</h1>
+    <p class="lede">一个用 LangGraph 编排的工具调用 Agent：模型不再凭空答产品问题，而是先查真实数据库、只复述查到的真值。这页拆开架构、文件、和面试时该讲的点。</p>
+    <div class="meta">
+      <span class="chip">编排 <b>LangGraph.js</b></span>
+      <span class="chip">模型 <b>qwen-plus</b> + 寒暄 <b>qwen-flash</b></span>
+      <span class="chip">端点 <b>DashScope OpenAI 兼容</b></span>
+      <span class="chip">后端 <b>Express + Mongoose</b></span>
+      <span class="chip">前端 <b>React + react-markdown</b></span>
+    </div>
+  </header>
+
+  <!-- 总览 -->
+  <section>
+    <div class="sec-head"><h2>一句话总览</h2></div>
+    <div class="prose">
+      <p>用户在聊天气泡里问产品（"推荐两款手推车"、"JX-80SP 装箱量多少"），后端把问题交给一个 <strong>Agent 循环</strong>：模型判断要不要查库 → 调工具查真实产品数据 → 拿到结果后再组织回答。核心目标是<strong>杜绝幻觉</strong>——型号、规格、链接全部来自数据库，模型只做"翻译和组织"，不许自己编。</p>
+      <p>价格 / 库存 / 交期这类库里没有的，一律礼貌转人工并引导留资。</p>
+    </div>
+  </section>
+
+  <!-- 请求全链路 -->
+  <section>
+    <div class="sec-head"><span class="sec-num">01</span><h2>请求全链路</h2></div>
+    <p class="prose" style="color:var(--muted); margin-bottom:1.1rem;">一条消息从前端到模型再回来，依次经过这些层。左侧色条标层：<span style="color:var(--node-fe)">■</span> 前端 · <span style="color:var(--accent)">■</span> Agent · <span style="color:var(--tool)">■</span> 工具/数据。</p>
+
+    <div class="flow">
+      <div class="node layer-fe">
+        <div class="role">前端 · 输入</div>
+        <div class="file">ChatWidget.jsx → services/chatService.js</div>
+        <p class="desc">用户输入，前端持有整段对话历史，<code>POST /api/chat</code> 把 <code>messages[]</code> 整包发过去（模型无状态，历史即记忆）。</p>
+      </div>
+      <div class="arrow">↓</div>
+
+      <div class="node layer-agent">
+        <div class="role">路由 + 控制器</div>
+        <div class="file">routes/chat.js → controllers/chatController.js</div>
+        <p class="desc">限速；校验 messages；<strong>后端注入 system prompt</strong>（不信任前端传的身份，防 prompt 注入）；把 <code>{role,content}</code> 转成 LangChain 消息对象，调 <code>runAgent()</code>。</p>
+      </div>
+      <div class="arrow">↓</div>
+
+      <div class="node layer-agent">
+        <div class="role">编排 · LangGraph 图</div>
+        <div class="file">agent/graph.js</div>
+        <p class="desc"><code>StateGraph</code>：<code>START → agent 节点</code>。agent 节点 = <code>ChatOpenAI(qwen-plus).bindTools()</code>，模型决定是否调工具。</p>
+      </div>
+
+      <div class="loop">
+        <b>Agent 循环（ReAct）</b>：agent 节点输出里带 <code>tool_calls</code> → 条件边走到 <b>tools 节点</b>（<code>ToolNode</code> 执行工具、把结果作为 <code>ToolMessage</code> 喂回）→ 回到 agent 节点再判断。没有 <code>tool_calls</code> 时 → <code>END</code>，输出最终文本。
+      </div>
+
+      <div class="arrow">↓</div>
+      <div class="node layer-tool">
+        <div class="role">工具层</div>
+        <div class="file">agent/tools.js — searchProducts / getProduct</div>
+        <p class="desc">用 <code>tool()</code> + <code>zod</code> schema 定义。搜索工具只返回"识别用"字段（型号/名称/链接/是否热销）；取详情工具返回瘦身后的完整规格。</p>
+      </div>
+      <div class="arrow">↓</div>
+
+      <div class="node layer-tool">
+        <div class="role">数据服务层</div>
+        <div class="file">services/productService.js → models/product.js (MongoDB)</div>
+        <p class="desc"><code>listPublic()</code> / <code>getPublicByIdOrSlug()</code> 直接查库。工具<strong>直接调 service，不绕自己的 HTTP 接口</strong>——少一次网络、复用同一套查询逻辑。</p>
+      </div>
+      <div class="arrow">↑ 结果喂回模型，模型组织成最终回答</div>
+
+      <div class="node layer-fe">
+        <div class="role">前端 · 渲染</div>
+        <div class="file">ChatWidget.jsx (react-markdown)</div>
+        <p class="desc">回复用 Markdown 渲染，产品链接 <code>[JX-80SP](/products/jx-80sp)</code> 变成可点蓝链；点站内链接走 SPA 跳转并收起面板。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 文件清单 -->
+  <section>
+    <div class="sec-head"><span class="sec-num">02</span><h2>新增 / 改动的文件</h2></div>
+    <p class="prose" style="color:var(--muted); margin-bottom:1.1rem;"><span class="tag new">新增</span> <span class="tag chg">改动</span> <span class="tag dead">已弃用</span></p>
+
+    <div class="grid two">
+      <div class="card">
+        <div class="path">agent/graph.js <span class="tag new">新增</span></div>
+        <p><strong>整个 Agent 的心脏。</strong>建 LangGraph 图（agent 节点 + ToolNode + 条件边）；把 <code>ChatOpenAI</code> 指向 qwen-plus；实现强制工具逻辑；导出 <code>runAgent()</code>。</p>
+      </div>
+      <div class="card">
+        <div class="path">agent/tools.js <span class="tag new">新增</span></div>
+        <p>两个只读工具 <code>searchProducts</code> / <code>getProduct</code>。zod 定义入参，函数体调 productService，返回<strong>瘦身后的 JSON</strong>（去图片/时间戳，省 token、少噪音）。</p>
+      </div>
+      <div class="card">
+        <div class="path">services/productService.js <span class="tag new">新增</span></div>
+        <p>数据访问层，从 controller 里抽出来的 <code>listPublic</code> / <code>getPublicByIdOrSlug</code>。<strong>controller 和工具共用</strong>，单一数据源。</p>
+      </div>
+      <div class="card">
+        <div class="path">controllers/chatController.js <span class="tag chg">改动</span></div>
+        <p>从"调 <code>chat()</code> 纯对话"改成"调 <code>runAgent()</code> 跑图"；负责消息格式转换 + 后端注入 system prompt。</p>
+      </div>
+      <div class="card">
+        <div class="path">agent/systemPrompt.js <span class="tag chg">改动</span></div>
+        <p>把 A 类（规格）从"暂说待核实"翻转为"<strong>必须调工具取真值、只复述、绝不脑补</strong>"；加防幻觉硬规则。</p>
+      </div>
+      <div class="card">
+        <div class="path">controllers/productController.js <span class="tag chg">改动</span></div>
+        <p>公开查询改调 productService，行为不变（回归零变化）。</p>
+      </div>
+      <div class="card">
+        <div class="path">ChatWidget.jsx <span class="tag chg">改动</span></div>
+        <p>助手消息用 react-markdown 渲染；<code>mdComponents</code> 把站内链接做成可点、点了走 SPA 跳转 + 收起面板。</p>
+      </div>
+      <div class="card">
+        <div class="path">agent/llm.js <span class="tag dead">已弃用</span></div>
+        <p>P1 的 openai SDK 纯对话路径 + 429 退避。接图后没人调它了，属死代码（可删，或留作 P3 参考）。</p>
+      </div>
+    </div>
+    <p class="prose" style="margin-top:1rem; color:var(--muted); font-size:.9rem;">依赖：后端加 <code>@langchain/langgraph · @langchain/openai · @langchain/core · zod</code>；前端加 <code>react-markdown</code>；<code>.env</code> 的 <code>LLM_MODEL=qwen-plus</code>。</p>
+  </section>
+
+  <!-- 核心概念 -->
+  <section>
+    <div class="sec-head"><span class="sec-num">03</span><h2>核心概念（面试主线）</h2></div>
+
+    <div class="concept">
+      <h3>① LangGraph StateGraph 与 Agent 循环</h3>
+      <p>图有两个节点：<strong>agent</strong>（调模型）和 <strong>tools</strong>（执行工具）。<strong>条件边</strong>看模型最新输出里有没有 <code>tool_calls</code>——有就去 tools，执行完喂回再回 agent；没有就 <code>END</code>。这就是 ReAct 循环：<em>想→调工具→看结果→再想</em>，直到能回答。状态用 <code>MessagesAnnotation</code> 累积消息。</p>
+      <pre>START → agent → 有 tool_calls? ─是→ tools → 回 agent
+                        └─否→ END</pre>
+    </div>
+
+    <div class="concept">
+      <h3>② Tool Calling（函数调用）</h3>
+      <p>工具用 <code>tool(fn, {name, description, schema})</code> 定义，<code>schema</code> 是 zod。模型不直接执行工具——它输出一段<strong>结构化的 <code>tool_calls</code></strong>（工具名 + 参数 JSON），由 <code>ToolNode</code> 执行、把返回值作为 <code>ToolMessage</code> 塞回对话，模型下一轮据此作答。description 写得好不好直接影响模型调不调、调得准不准。</p>
+    </div>
+
+    <div class="concept">
+      <h3>③ 防幻觉：防御纵深（四道）</h3>
+      <p>单一措施都堵不死幻觉，用多道叠加：</p>
+      <ul class="tight">
+        <li><strong>① 强制工具（tool_choice: 'required'）</strong>：命中产品意图时逼模型必须调工具——堵"跳过工具凭感觉编型号"。</li>
+        <li><strong>② 瘦身工具返回</strong>：搜索列表只给型号/链接/是否热销、<strong>不给数字</strong>，避免多条间把 MOQ/颜色数张冠李戴；具体数值只从单条 <code>getProduct</code> 取。</li>
+        <li><strong>③ Prompt 收紧 + temperature 0</strong>：只准说工具返回的字段，功能/卖点不许编。</li>
+        <li><strong>④ 出口校验兜底（最硬）</strong>：回复发出<strong>前</strong>把每个 <code>/products/&lt;id&gt;</code> 链接拿去库里核——有假的→强制调工具重试一次→仍假则返回安全兜底话术。<strong>假链接绝对到不了用户</strong>，不再依赖"永远堵不全"的关键词正则。</li>
+      </ul>
+    </div>
+
+    <div class="concept">
+      <h3>④ 领域知识 + 多维检索</h3>
+      <p><strong>品类词典</strong>写进 system prompt（业务知识，非幻觉）：购物手推车=带袋·买菜；多用途手推车=无袋·承重·搬家。模型据此听懂需求、选对 category、跟客户解释区别。<strong>检索维度</strong>：searchProducts 支持 分类 + 关键词 + <strong>颜色</strong>（中文颜色由模型翻成英文再传，库里对颜色名做不区分大小写子串匹配）。</p>
+    </div>
+
+    <div class="concept">
+      <h3>⑤ Provider 抽象</h3>
+      <p><code>ChatOpenAI</code> 通过 <code>configuration.baseURL</code> 指向 DashScope 的 OpenAI 兼容端点。<strong>换模型/换厂商只改 3 个 env</strong>（<code>LLM_BASE_URL / LLM_API_KEY / LLM_MODEL</code>），代码零改。部署位置不同选不同 provider（墙外可 Gemini、墙内用 DashScope/DeepSeek）。</p>
+    </div>
+
+    <div class="concept">
+      <h3>⑥ 无状态 + 分层</h3>
+      <p>模型<strong>无记忆</strong>：前端持有对话历史，每次整包发，后端不落库（落库是 P4）。分层清晰：<code>route → controller → agent(graph) → tools → service → model</code>，工具直接调 service 不绕 HTTP。system prompt <strong>后端注入</strong>，前端只发消息内容，防 prompt 注入。</p>
+    </div>
+
+    <div class="concept">
+      <h3>⑦ 模型分级（速度 ↔ 可靠）</h3>
+      <p>按任务难度用不同模型：<strong>纯寒暄/问候</strong>（锚定白名单命中）走 <code>qwen-flash</code> 快车道（无工具无图，<strong>~0.9s</strong> 秒回，没产品数据可编所以安全）；<strong>产品问答/推荐</strong>才走 <code>qwen-plus</code> + 工具主线（可靠但 2 轮 ~4–6s）。这是刻意的速度↔可靠取舍：flash 快但会跳工具/编型号，plus 慢但听话。</p>
+    </div>
+
+    <div class="concept">
+      <h3>⑧ 语言一致</h3>
+      <p>system prompt 整体是中文，短英文问句容易被带偏成中文回复、或中英混排。解法：每轮按<strong>买家最近消息的语言</strong>，在消息<strong>末尾</strong>动态追加一条强指令（中文→"全程中文别夹英文"；非中文→"reply entirely in the buyer's language, no Chinese"）。放末尾 + 用目标语言写，压得住。</p>
+    </div>
+  </section>
+
+  <!-- 值得注意 -->
+  <section>
+    <div class="sec-head"><span class="sec-num">04</span><h2>值得注意的坑</h2></div>
+
+    <div class="gotcha"><span class="mark">!</span><div>
+      <p class="t">弱模型不肯调工具 → 编假型号 → 死链</p>
+      <p class="d">qwen-flash 对"推荐"这类软请求会跳过工具、凭命名规律脑补出 <code>JX-180S</code> 这种库里不存在的型号（链接 404）。qwen-plus + 强制 tool_choice 才可靠。<strong>"为什么会推荐不存在的产品" = LLM 本质是续写不是查库。</strong></p>
+    </div></div>
+
+    <div class="gotcha"><span class="mark">!</span><div>
+      <p class="t">关键词正则强制"永远堵不全"</p>
+      <p class="d">用正则判断"是不是产品意图"来决定要不要强制调工具，换个说法就绕过（"家里搬东西用啥好"不含关键词→没强制→模型编 <code>JX-UT800</code> 还自称"真实在售"）。所以不能只靠正则——必须加<strong>出口校验兜底</strong>（第③节第 4 道）兜住漏网的。</p>
+    </div></div>
+
+    <div class="gotcha"><span class="mark">!</span><div>
+      <p class="t">tool_choice: 'required' 只能用在"第一轮"</p>
+      <p class="d">若每轮都强制调工具会<strong>死循环</strong>（拿到结果还被逼再调）。用 <code>hasToolResult</code>（消息里是否已有 ToolMessage）判断，只在首轮强制，之后放开让它作答。</p>
+    </div></div>
+
+    <div class="gotcha"><span class="mark">!</span><div>
+      <p class="t">产品的 name 和 url-id 可能不一样</p>
+      <p class="d">如 id=<code>jx-f4-2</code> 但 name=<code>JX-F4</code>。链接用 id，显示名用 name，<strong>两者都以工具返回为准</strong>，别自己拼。</p>
+    </div></div>
+
+    <div class="gotcha"><span class="mark">!</span><div>
+      <p class="t">LLM 没有 100% 保证</p>
+      <p class="d">强制工具让它极可靠，但理论上仍可能无视结果乱写。要彻底保险可加"<strong>发出前把回复里每个 <code>/products/xxx</code> 链接对库校验</strong>"的兜底（P3）。</p>
+    </div></div>
+
+    <div class="gotcha"><span class="mark">!</span><div>
+      <p class="t">LangGraph 的 ChatOpenAI 有自己的重试</p>
+      <p class="d">P1 那套自定义 429 退避（llm.js）在图里不生效，改用 <code>ChatOpenAI</code> 的 <code>maxRetries</code>；日配额耗尽的 429 由 controller 兜底成友好提示。</p>
+    </div></div>
+  </section>
+
+  <!-- 面试问答 -->
+  <section>
+    <div class="sec-head"><span class="sec-num">05</span><h2>面试问答演练</h2></div>
+    <p class="prose" style="color:var(--muted); margin-bottom:1.1rem;">点开看参考答法。用自己的话讲，别背。</p>
+
+    <details class="qa"><summary><span class="q">Q</span><span>讲讲这个 Agent 的整体架构？</span></summary>
+      <div class="a">前端浮动气泡持有对话历史，整包发到 <code>/api/chat</code>。后端注入 system prompt 后交给一个 <strong>LangGraph StateGraph</strong>：agent 节点调模型（ChatOpenAI 指向 Qwen），模型决定是否调工具；条件边根据 <code>tool_calls</code> 在 agent 和 tools 节点间循环。工具（searchProducts / getProduct）直接调 productService 查 MongoDB，返回瘦身数据喂回模型组织成答案。分层：route → controller → graph → tools → service → model。</div>
+    </details>
+
+    <details class="qa"><summary><span class="q">Q</span><span>怎么防止 AI 编造/幻觉？</span></summary>
+      <div class="a"><strong>防御纵深，四道叠加</strong>（单一措施都堵不死）：①产品意图<strong>强制调工具</strong>（tool_choice=required）；②工具返回<strong>瘦身</strong>，搜索列表只给型号/链接不给数字，避免多条串味；③prompt"<strong>只准说工具字段</strong>"+ temperature 0；④<strong>出口链接对库校验</strong>——发出前核每个产品链接，假的就强制重试、再假则安全兜底，假链接绝不外泄。再叠加换用遵循度更高的 qwen-plus。关键洞察：<strong>正则判意图会漏，必须有出口兜底</strong>。</div>
+    </details>
+
+    <details class="qa"><summary><span class="q">Q</span><span>为什么用 LangGraph，而不是自己写个 while 循环？</span></summary>
+      <div class="a">循环本身简单，但 LangGraph 给的是<strong>可扩展的结构</strong>：状态管理（MessagesAnnotation）、标准化的 ToolNode、条件边把控制流显式化。后面加记忆（P4）、加 RAG 检索节点（P5）、加人工审核断点，都是在图上加节点/边，不用重写循环。也更好观测和调试。</div>
+    </details>
+
+    <details class="qa"><summary><span class="q">Q</span><span>工具是怎么定义的？为什么直接调 service 不调自己的 API？</span></summary>
+      <div class="a">用 <code>tool()</code> + <code>zod</code> schema 声明入参，函数体调 productService。<strong>直接调 service</strong>：省一次 HTTP 往返、少一层出错面、和 controller 复用同一套查询逻辑（单一数据源）。为此专门把查询从 controller 抽成了 productService。</div>
+    </details>
+
+    <details class="qa"><summary><span class="q">Q</span><span>换模型 / 换厂商麻烦吗？</span></summary>
+      <div class="a">不麻烦。走 <strong>OpenAI 兼容协议</strong>，ChatOpenAI 用 <code>baseURL</code> 指到 DashScope；换厂商只改 <code>LLM_BASE_URL / LLM_API_KEY / LLM_MODEL</code> 三个环境变量，代码不动。还能按部署位置选（墙内墙外）。</div>
+    </details>
+
+    <details class="qa"><summary><span class="q">Q</span><span>对话历史 / 记忆怎么处理？</span></summary>
+      <div class="a">现阶段模型<strong>无状态</strong>：前端持有 messages 历史，每轮整包发过来，后端只负责当轮推理不落库。好处是简单、可横向扩展。持久化对话 + 关联询盘是下一阶段（P4）的事。</div>
+    </details>
+
+    <details class="qa"><summary><span class="q">Q</span><span>响应为什么慢？还能优化吗？</span></summary>
+      <div class="a">产品问答 = <strong>2 次模型往返</strong>（决定调工具 → 组织答案），每次 qwen-plus 约 2–3s，所以 ~4–6s 是"可靠模型 + 工具 + 发出前校验"三条不变时的<strong>结构性地板</strong>，安全范围内砍不动。已做的安全优化：简洁回复、<code>maxTokens</code> 封顶、寒暄走 flash（~0.9s）。再往下只剩 <strong>流式</strong>（总时长不变，但 2–3s 就开始出字、体感减半；寒暄类没 guardrail 冲突可安全流式）。另外免费/低配额档会<strong>限流</strong>——压测后单轮飙到 10s+ 是限流假象，非代码问题，生产付费档 + 低流量不会。</div>
+    </details>
+
+    <details class="qa"><summary><span class="q">Q</span><span>防幻觉这套是不是补丁太多？如果重来会怎么设计？</span></summary>
+      <div class="a">诚实说：现在是<strong>反应式打地鼠</strong>（强制正则 + 瘦身 + prompt + 出口校验 + 兜底），防御纵深有效但不优雅——是在补"模型爱编 + 不够听话"。<strong>更优雅的架构</strong>：<em>"LLM 只选、代码渲染真值"</em>——工具返回带 id 的数据 → LLM 只输出结构化决策（如 <code>{recommend:[id…]}</code>）→ <strong>后端按 id 从库取真实名/链接/规格，由代码渲染</strong>（或产品卡片）。这样 LLM 结构上没机会吐出假产品，能替掉大半补丁。代价是少点自由行文，但产品卡 UX 可能更好。<strong>能讲出这个 = 显架构成熟度。</strong></div>
+    </details>
+
+    <details class="qa"><summary><span class="q">Q</span><span>成本 / 更换更便宜快的模型？</span></summary>
+      <div class="a">聊天流量低，qwen-plus 已经很便宜（10 元用很久）。要更快更省可 A/B：<strong>deepseek-v4-flash</strong>（便宜、支持 tool calling、自带 <strong>prompt 缓存</strong>正好治"大 system prompt 每轮发两遍"）、qwen-turbo（零迁移）、GLM-4-Flash。<strong>但换模型必须先跑 eval 防幻觉倒退</strong>——"支持工具调用" ≠ "可靠不编"。这也是先建 eval 的价值：它是换模型的安全网。</div>
+    </details>
+
+    <details class="qa"><summary><span class="q">Q</span><span>怎么保证改架构不把行为改坏？</span></summary>
+      <div class="a">一套<strong>行为回归 eval</strong>（<code>scripts/agent-eval.js</code>，35 条）：打 <code>/api/chat</code> + 确定性断言 + 出分。<strong>关键——真值从数据库现取自推</strong>（期望值直接读库），不靠硬编、不会因记错某个数误报；断言只认真值不认措辞、数字去逗号归一。改前跑拿基线，改后必须 ≥ 基线，红绿一眼见。把"打地鼠"变"照表迭代"。（调 eval 的坑：颜色标签会本地化 Black→黑色，不能比英文原文。）</div>
+    </details>
+
+    <details class="qa"><summary><span class="q">Q</span><span>用户问政治 / 医疗 / 无关问题怎么办？</span></summary>
+      <div class="a"><strong>检测 → 固定挡回，绝不让模型自由生成。</strong>政治/地缘(台湾)/宗教/医疗/其他公司/编程等一律不表态、不展开，礼貌转回产品；情绪(分手)先一句共情再温和转回。要点：面向全球买家的销售 bot 就地缘政治表态<strong>本身就是风险</strong>（无论说什么），所以检测到就挡回，而非让模型去"答"。当前 prompt 规则版；更彻底是 flash 路由把 off-topic 分敏感/情绪/普通三档。</div>
+    </details>
+  </section>
+
+  <p class="foot">Juxin 售前 AI 助理 · Agent 架构讲解 · 分支 dev-v3-agent · 主线 qwen-plus / 寒暄 qwen-flash（生产需在 Render 环境变量同步设 LLM_MODEL）。</p>
+
+</div>
+</div>
+
+</body>
+</html>

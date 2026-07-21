@@ -631,6 +631,7 @@
       <li><strong>④ 出口链接对库校验（最硬）</strong> —— 回复发出前把每个 <code>/products/&lt;id&gt;</code> 拿去库里核，有假链接→强制重试→仍假则安全兜底。<strong>假链接绝对到不了用户</strong>，不依赖"永远堵不全"的关键词正则。</li>
       <li><strong>语言一致</strong> —— 每轮按买家语言在末尾追加强指令，防中英混排/语言跑偏。</li>
       <li><strong>防注入</strong> —— system prompt 后端注入，前端只发消息内容，只信任工具返回。</li>
+      <li><strong>无关/敏感话题不涉入</strong> —— 政治/地缘(台湾)/宗教/医疗/其他公司/编程等一律<strong>不表态、不展开</strong>，礼貌转回产品；情绪(如分手)先一句共情再温和转回。检测→固定挡回，<strong>绝不让模型自由生成敏感内容</strong>。(临时 prompt 版已生效；未来由 flash 路由 off-topic 三档更彻底。)</li>
     </ul>
     <div class="callout">
       <span class="tag">诚实的局限 & 优雅方向</span>
@@ -691,7 +692,7 @@
       <div class="phase"><div class="pn">P3</div><div><p class="pt">🟡 防幻觉 + 护栏（大部分随 P2 完成）</p><p class="pd">已实现<strong>防御纵深四道</strong>：强制 tool_choice + 工具返回瘦身 + prompt"只说工具字段" + <strong>出口链接对库校验+重试+兜底</strong>；越界(价格/交期)硬转人工。<em>剩余：eval 固化 + 考虑重构成"LLM 选 id、代码渲染真值"（详见架构讲解页）。</em></p><div class="pmeta"><span class="chip learn">学:prompt 工程 · 边界 · 防御纵深</span><span class="chip">1 天</span></div></div></div>
       <div class="phase"><div class="pn">P4</div><div><p class="pt">记忆 + 抓询盘 · 闭环 ★</p><p class="pd">conversationId 存 Mongo;create_inquiry 工具,信息够了落结构化询盘并关联对话。</p><div class="pmeta"><span class="chip learn">学:把 Agent 接进真实业务动作</span><span class="chip">1–2 天</span></div></div></div>
       <div class="phase"><div class="pn">P5</div><div><p class="pt">RAG + 向量库 ★</p><p class="pd">公司软信息切块 → Atlas Vector Search → 检索注入 + 小评估。(为 RAG/向量库关键词升级)</p><div class="pmeta"><span class="chip learn">学:embedding · 检索 · 评估</span><span class="chip">1–2 天</span></div></div></div>
-      <div class="phase"><div class="pn">P6</div><div><p class="pt">严肃信号</p><p class="pd">20–30 条 eval 集(报准确率)+ 对话/工具日志接进 admin 后台。</p><div class="pmeta"><span class="chip learn">学:评估思维 · 可观测性</span><span class="chip">1–2 天</span></div></div></div>
+      <div class="phase"><div class="pn">P6</div><div><p class="pt">🟡 严肃信号（eval 已提前做）</p><p class="pd">已做：<code>scripts/agent-eval.js</code> —— <strong>35 条行为回归 eval</strong>，打 /api/chat + 确定性断言 + 出分；<strong>真值从数据库现取自推</strong>(facts)，一条命令红绿一眼见。<em>剩余：对话/工具日志接进 admin 后台。</em></p><div class="pmeta"><span class="chip learn">学:评估思维 · 可观测性</span><span class="chip">1–2 天</span></div></div></div>
       <div class="phase"><div class="pn">P7</div><div><p class="pt">部署</p><p class="pd">免费模型 key 配到 Render 环境变量,上线。</p><div class="pmeta"><span class="chip learn">学:密钥管理 · 部署</span><span class="chip">~0.5 天</span></div></div></div>
       <div class="phase"><div class="pn">P8</div><div><p class="pt">MCP(拉伸)</p><p class="pd">工具封装成 MCP server,agent 经协议消费。前沿加分,排最后。</p><div class="pmeta"><span class="chip learn">学:MCP 协议 · 服务解耦</span><span class="chip">1–2 天</span></div></div></div>
     </div>
