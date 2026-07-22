@@ -24,9 +24,11 @@ const TIMEOUT = Number(process.env.TIMEOUT || 60000)
 // —— 小工具 ——
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 const lc = (s) => String(s || '').toLowerCase()
-const stripComma = (s) => lc(s).replace(/[,，]/g, '') // "1,000"→"1000"
-// 回复是否包含某值(大小写不敏感 + 去逗号兜住千分位)
-const has = (reply, val) => lc(reply).includes(lc(val)) || stripComma(reply).includes(stripComma(val))
+// 去千分位分隔符：分隔符(., 空格 ' )后必须正好跟3位数字才算千分位，避免误删小数点(1.5/3.14 不动)
+// 兜住多语言本地化：英文 1,000 / 西语德语 1.000 / 法语 1 000 都归一成 1000
+const stripSep = (s) => lc(s).replace(/(\d)[.,，\s '](?=\d{3}(\D|$))/g, '$1')
+// 回复是否包含某值(大小写不敏感 + 去千分位分隔符)
+const has = (reply, val) => lc(reply).includes(lc(val)) || stripSep(reply).includes(stripSep(val))
 const numbersOf = (s) => String(s == null ? '' : s).match(/\d+(?:\.\d+)?/g) || []
 const cjkCount = (s) => (String(s).match(/[㐀-鿿぀-ヿ가-힯]/g) || []).length
 const productIdsIn = (reply) =>
