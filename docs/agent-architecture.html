@@ -307,7 +307,7 @@
 
     <div class="concept">
       <h3>④ 领域知识 + 多维检索</h3>
-      <p><strong>品类词典</strong>写进 system prompt（业务知识，非幻觉）：购物手推车=带袋·买菜；多用途手推车=无袋·承重·搬家。模型据此听懂需求、选对 category、跟客户解释区别。<strong>检索维度</strong>：searchProducts 支持 分类 + 关键词 + <strong>颜色</strong>（中文颜色由模型翻成英文再传，库里对颜色名做不区分大小写子串匹配）。</p>
+      <p><strong>品类词典</strong>写进 system prompt（业务知识，非幻觉）：购物手推车=带袋·买菜；多用途手推车=无袋·承重·搬家。模型据此听懂需求、选对 category、跟客户解释区别。<strong>检索维度</strong>：searchProducts 支持 分类 + 关键词 + <strong>颜色</strong>（中文颜色由模型翻成英文再传，库里对颜色名做不区分大小写子串匹配）。<strong>结构化特征</strong>：getProduct 返回 <code>features</code>(foldable/brake/伸缩…) + <code>loadCapacity</code>(承重) + <code>material</code>(材料)，助理据此做"搬重物→高承重金属材料""要收纳→可折叠"的<strong>有据</strong>推荐——但仍只说工具真返回的值，没返回就当没有。</p>
     </div>
 
     <div class="concept">
@@ -356,8 +356,8 @@
     </div></div>
 
     <div class="gotcha"><span class="mark">!</span><div>
-      <p class="t">LLM 没有 100% 保证</p>
-      <p class="d">强制工具让它极可靠，但理论上仍可能无视结果乱写。要彻底保险可加"<strong>发出前把回复里每个 <code>/products/xxx</code> 链接对库校验</strong>"的兜底（P3）。</p>
+      <p class="t">LLM 没有 100% 保证 → 已加出口校验兜底</p>
+      <p class="d">强制工具让它极可靠，但理论上仍可能无视结果乱写。所以<strong>发出前把回复里每个 <code>/products/xxx</code> 链接对库校验</strong>（见第③节第 4 道，已实现于 <code>graph.js</code> 的 <code>runAgent</code>）：有假链接→强制调工具重试一次→仍假则返回安全兜底话术，<strong>假链接绝不外泄</strong>。</p>
     </div></div>
 
     <div class="gotcha"><span class="mark">!</span><div>
