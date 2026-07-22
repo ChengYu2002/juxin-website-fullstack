@@ -2,7 +2,8 @@
 // P2 编排：LangGraph StateGraph
 //   START → agent(调模型,带工具) → 有 tool_calls? ─是→ tools(执行,喂回) → 回 agent
 //                                            └─否→ END(出最终回答)
-// 模型：Qwen(qwen-flash) via DashScope OpenAI-兼容端点，用 ChatOpenAI 指过去。
+// 模型：主线走 LLM_MODEL(生产=qwen-plus) via DashScope OpenAI-兼容端点，用 ChatOpenAI 指过去。
+//       （纯寒暄另走 fastReply.js 的 qwen-flash 快车道，不经本图。）
 
 const { ChatOpenAI } = require('@langchain/openai')
 const { StateGraph, MessagesAnnotation, START, END } = require('@langchain/langgraph')

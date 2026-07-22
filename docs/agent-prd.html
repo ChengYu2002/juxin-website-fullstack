@@ -329,9 +329,9 @@
     <div class="meta">
       <span><b>项目</b> Juxin Manufacturing</span>
       <span><b>版本</b> v0.2</span>
-      <span><b>状态</b> P2 已实现（防幻觉原 P3 随手完成）</span>
+      <span><b>状态</b> P2 + 防幻觉四道 + eval + 敏感挡回 已实现；P4 抓询盘 / P5 RAG 待做</span>
       <span><b>分支</b> dev-v3-agent</span>
-      <span><b>日期</b> 2026-07-20</span>
+      <span><b>日期</b> 2026-07-22</span>
     </div>
   </header>
 
@@ -585,6 +585,10 @@
       <span class="tag">硬约束</span>
       <p>规格/数字问题<strong>必须</strong>走 <code>getProduct</code> / <code>searchProducts</code> 取真值,禁止模型自答。<code>createInquiry</code> 仅在 <code>collectedLead</code> 含 name + email 时允许触发。</p>
     </div>
+    <div class="callout warnbox">
+      <span class="tag">落地状态</span>
+      <p><code>searchProducts</code> / <code>getProduct</code> <strong>已实现并端到端跑通</strong>（<code>agent/tools.js</code>，直调 <code>productService</code>）；<code>getProduct</code> 现已含结构化<strong>特征字段</strong>（<code>features</code>: foldable/brake/伸缩… · <code>loadCapacity</code> 承重 · <code>material</code> 材料）。<code>createInquiry</code> 属 <strong>P4 规划,尚未落地</strong> —— 本表列出是目标形态,当前"抓询盘"只会引导买家留邮箱,还未真正落库/发邮件。</p>
+    </div>
   </section>
 
   <section id="s8">
@@ -735,6 +739,6 @@
     </div>
   </section>
 
-  <p class="foot">巨鑫外贸售前 AI 助理 · Agent PRD v0.1 · Draft · 2026-07-13 · 决策依据见对话记录,后续随开发迭代更新版本号。</p>
+  <p class="foot">巨鑫外贸售前 AI 助理 · Agent PRD v0.2 · Draft · 2026-07-22 · 决策依据见对话记录,后续随开发迭代更新版本号。</p>
 
 </div>
