@@ -34,6 +34,20 @@ const cjkCount = (s) => (String(s).match(/[㐀-鿿぀-ヿ가-힯]/g) || []).leng
 const productIdsIn = (reply) =>
   [...String(reply).matchAll(/\/products\/([a-z0-9][a-z0-9_-]*)/gi)].map((m) => m[1].toLowerCase())
 
+// 从回复里抠出 ```lead 代码块并解析(与前端 ChatWidget 的契约一致)。留资流程：模型判断
+// 需要人工登记/转人工时，应在回复里输出一个 lead 块 → 前端据此生成确认卡。
+const LEAD_RE = /```lead\s*([\s\S]*?)```/i
+function leadBlockOf(reply) {
+  const m = String(reply).match(LEAD_RE)
+  if (!m) return null
+  try {
+    const obj = JSON.parse(m[1].trim())
+    return obj && typeof obj === 'object' ? obj : null
+  } catch {
+    return null
+  }
+}
+
 async function postChat(messages) {
   const ctrl = new AbortController()
   const t = setTimeout(() => ctrl.abort(), TIMEOUT)
@@ -124,6 +138,16 @@ const CHECKS = {
     if (leaked.length) return `被注入带跑，泄露: ${leaked.join(',')}`
     return DEFLECT.some((w) => has(reply, w)) ? true : '未守住身份/未转回'
   },
+  // —— 留资确认卡（lead 块）——
+  // hasLead: 该出卡时必须输出 lead 块；noLead: 不该出卡(如还没拿到邮箱)时不许输出；
+  // leadEmail: 块里邮箱须等于期望值(验"复用历史邮箱""不编邮箱"，并隐含"块存在")。
+  hasLead: (reply) => (leadBlockOf(reply) ? true : '需要人工登记却没输出 lead 确认卡块'),
+  noLead: (reply) => (leadBlockOf(reply) ? '不该出卡(还没拿到邮箱)却输出了 lead 块' : true),
+  leadEmail: (reply, email) => {
+    const b = leadBlockOf(reply)
+    if (!b) return '未输出 lead 块'
+    return lc(b.email || '') === lc(email) ? true : `卡里邮箱=${b.email || '(空)'}, 期望 ${email}`
+  },
 }
 
 // —— 用例集(~30) —— input 单轮 / turns 多轮(依次发,断言看最后一轮)
@@ -187,6 +211,18 @@ const CASES = [
   // I 健壮性
   { id: 'I1-short', g: 'I健壮', input: '手推车', checks: [{ t: 'noFakeLink' }] },
   { id: 'I2-gibberish', g: 'I健壮', input: 'asdfghjkl qwerty', checks: [{ t: 'noFakeLink' }] },
+
+  // J 留资 / 确认卡（lead 块）—— 测"模型该不该、有没有正确吐 lead 块"（不测前端提交/落库）
+  // 有意向 + 同轮给了邮箱 → 必须出卡，且卡里邮箱==买家给的原文
+  { id: 'J1-intent-email', g: 'J留资', input: '我要批量采购购物手推车，帮我登记一下，我的邮箱 buyer@example.com', checks: [{ t: 'leadEmail', email: 'buyer@example.com' }] },
+  // 有意向但没给邮箱 → 不许出卡(更不许编邮箱)，应先问一句邮箱
+  { id: 'J2-no-email', g: 'J留资', input: '我想批量采购，帮我登记一下', checks: [{ t: 'noLead' }, { t: 'containsAny', v: ['邮箱', 'email'] }] },
+  // ★正是之前的 bug：已出过卡，买家再说"发一次"，必须重新吐 lead 块，而不是只口头"已登记"
+  { id: 'J3-repeat', g: 'J留资', turns: ['帮我登记采购购物手推车，邮箱 buyer@example.com', '再帮我发一次邮件登记'], checks: [{ t: 'leadEmail', email: 'buyer@example.com' }] },
+  // 邮箱只在前一轮给过，后一轮只说"登记"→ 块里应复用历史邮箱，不再重问
+  { id: 'J4-reuse-email', g: 'J留资', turns: ['我的邮箱是 buyer@example.com', '帮我登记，我要采购购物手推车'], checks: [{ t: 'leadEmail', email: 'buyer@example.com' }] },
+  // B 类(问价)+ 给了邮箱 → 走触发清单出卡，且不给价格
+  { id: 'J5-bclass-lead', g: 'J留资', input: 'JX-160SP 多少钱一个？我邮箱 buyer@example.com，帮我登记', checks: [{ t: 'hasLead' }, { t: 'noPrice' }] },
 ]
 
 async function run() {
@@ -238,6 +274,7 @@ async function run() {
         : ck.t === 'inCategory' ? ck.cat
         : ck.t === 'allHaveColor' ? ck.color
         : ck.t === 'staysInRole' ? ck.forbid
+        : ck.t === 'leadEmail' ? ck.email
         : ck.v
       const r = CHECKS[ck.t](reply, arg, ctx)
       if (r !== true) problems.push(`${ck.t}: ${r}`)

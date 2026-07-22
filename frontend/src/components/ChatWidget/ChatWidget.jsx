@@ -8,11 +8,13 @@
 //     · 输入框随键盘：visualViewport 改面板高度 + translateY(offsetTop)，稳在键盘上方
 // - 输入：自动长高；回车发送但尊重中文输入法组词（isComposing 不误发）
 
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
 import { MessageCircle, X, Send } from 'lucide-react'
 import { sendChat } from '../../services/chatService'
+import { submitInquiry } from '../../services/inquiryService'
+import LeadCard from './LeadCard'
 
 const CID_KEY = 'juxin_chat_cid'
 
@@ -23,6 +25,30 @@ function getConversationId() {
     localStorage.setItem(CID_KEY, cid)
   }
   return cid
+}
+
+// 模型在回复末尾附一个 ```lead 代码块（JSON），用来生成留资确认卡。
+// 解析它、并从展示文字里剥掉标记；解析失败则不出卡、只显示剥掉后的文字（优雅降级）。
+const LEAD_RE = /```lead\s*([\s\S]*?)```/i
+function extractLead(text) {
+  const raw = String(text || '')
+  const m = raw.match(LEAD_RE)
+  if (!m) return { visible: raw, lead: null }
+  const visible = raw.replace(LEAD_RE, '').trim()
+  let lead = null
+  try {
+    const obj = JSON.parse(m[1].trim())
+    if (obj && typeof obj === 'object') {
+      lead = {
+        name: typeof obj.name === 'string' ? obj.name : '',
+        email: typeof obj.email === 'string' ? obj.email : '',
+        summary: typeof obj.summary === 'string' ? obj.summary : '',
+      }
+    }
+  } catch {
+    lead = null // JSON 坏了就当没有卡，只展示文字
+  }
+  return { visible, lead }
 }
 
 const WELCOME = {
@@ -155,14 +181,29 @@ export default function ChatWidget() {
     setError(null)
     setLoading(true)
     try {
-      const payload = nextMessages.filter((m) => m !== WELCOME)
+      // 只发 {role,content}（剥掉前端专属的 lead 字段，历史里也不含 ```lead 标记）
+      const payload = nextMessages
+        .filter((m) => m !== WELCOME)
+        .map(({ role, content }) => ({ role, content }))
       const { reply } = await sendChat(payload, cidRef.current)
-      setMessages((prev) => [...prev, { role: 'assistant', content: reply }])
+      const { visible, lead } = extractLead(reply)
+      setMessages((prev) => [...prev, { role: 'assistant', content: visible, lead }])
     } catch (err) {
       setError(err.message || '发送失败')
     } finally {
       setLoading(false)
     }
+  }
+
+  // 留资卡「✓ 确认发送」：复用现成表单接口（company:'' 为蜜罐空值）。
+  // 抛错交给 LeadCard 自己展示重试；成功由卡片切到 success 态。
+  async function handleLeadSubmit({ name, email, message }) {
+    await submitInquiry({ name, email, message, company: '' })
+  }
+
+  // 留资卡「✗ 取消」：把该条消息的卡片收起（对话继续，买家可再触发）
+  function dismissLead(idx) {
+    setMessages((prev) => prev.map((m, i) => (i === idx ? { ...m, leadDismissed: true } : m)))
   }
 
   function handleKeyDown(e) {
@@ -248,12 +289,17 @@ export default function ChatWidget() {
                     {m.content}
                   </div>
                 ) : (
-                  <div
-                    key={i}
-                    className="max-w-[85%] self-start break-words rounded-2xl rounded-bl-md border border-white/10 bg-white/10 px-3 py-2 text-sm leading-relaxed text-white/90 [&_a]:break-all"
-                  >
-                    <ReactMarkdown components={mdComponents}>{m.content}</ReactMarkdown>
-                  </div>
+                  <Fragment key={i}>
+                    {m.content && (
+                      <div className="max-w-[85%] self-start break-words rounded-2xl rounded-bl-md border border-white/10 bg-white/10 px-3 py-2 text-sm leading-relaxed text-white/90 [&_a]:break-all">
+                        <ReactMarkdown components={mdComponents}>{m.content}</ReactMarkdown>
+                      </div>
+                    )}
+                    {m.lead && !m.leadDismissed && (
+                      // 满宽（脱离 85% 气泡）：留资卡是表单，占满整个对话框更好操作
+                      <LeadCard lead={m.lead} onSubmit={handleLeadSubmit} onCancel={() => dismissLead(i)} />
+                    )}
+                  </Fragment>
                 ),
               )}
               {loading && (
