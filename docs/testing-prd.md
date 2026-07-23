@@ -21,9 +21,9 @@
 | 层 | 状态 | 说明 |
 |---|---|---|
 | Unit（单元） | ✅ 已落地 | 主力层。纯逻辑/中间件/组件，最快、无外部依赖。本文档主体。 |
-| Integration / API | ⏳ 规划中 | supertest + mongodb-memory-server，打 `app.js`，mock 掉 LLM/邮件/geo。 |
-| E2E | ⏳ 规划中 | Playwright 冒烟：联系表单提交 / 后台登录 / 打开 ChatWidget。 |
-| CI | ⏳ 规划中 | GitHub Actions：lint → test → build，LLM 全程 mock。 |
+| Integration / API | ✅ 已落地 | supertest + mongodb-memory-server，打 `app.js`，走完整 HTTP→中间件→controller→service→Mongo 链路。 |
+| E2E | ⏸️ 暂不做 | Playwright 冒烟。当前 ROI 低（集成层已覆盖主要风险），作为已知下一步保留。 |
+| CI | ✅ 已落地 | GitHub Actions：lint → test → build，LLM 全程不参与。 |
 | Agent 行为 eval | ✅ 已有（独立轴） | `scripts/agent-eval.js`，测 LLM 语义行为，**不进 CI**（会 flaky + 烧钱）。 |
 
 ---
@@ -48,11 +48,14 @@
 
 ```bash
 cd backend
-npm test                 # 跑一遍全部（vitest run）
+npm test                 # 跑一遍全部：单元 + 集成（vitest run）
+npm run test:integration # 只跑集成测试（tests/integration）
 npm run test:watch       # 监听模式，改文件自动重跑
 npx vitest run tests/requireAdmin.test.js   # 只跑单个文件
 npx vitest run -t "过期 token"              # 按用例名过滤
 ```
+
+> 集成测试首次运行会由 `mongodb-memory-server` 下载一个临时 mongod 二进制（之后本地缓存）。CI 同理。
 
 **前端**（`/frontend`）
 
@@ -63,7 +66,7 @@ npm run test:watch       # 监听模式
 npx vitest run src/utils/imageHost.test.js  # 只跑单个文件
 ```
 
-**当前基线**：后端 **6 文件 / 34 用例**，前端 **4 文件 / 24 用例**，合计 **58 用例全绿**，整轮 < 2 秒。
+**当前基线**：后端 **7 文件 / 52 用例**（单元 34 + 集成 18），前端 **4 文件 / 24 用例**，合计 **76 用例全绿**。
 
 ---
 
@@ -219,16 +222,42 @@ frontend/
 | 6 | 429 错误 → 映射成友好话术，不甩技术原文 | 用户体验 |
 | 7 | 点 ✗ → 触发 `onCancel` | |
 
+### 7.3 后端集成（18）
+
+`tests/integration/api.test.js` — supertest 打真实 `app.js` + mongodb-memory-server 临时库。
+
+| 分组 | 用例 | 断言意图 |
+|---|---|---|
+| `POST /api/inquiries` | 合法提交 → 201 且真的落库 | 主链路 + 持久化 |
+| | 后台副作用：geo 回写 country、邮件失败回写 `emailed=failed` | `setImmediate` 副作用 + 三态 |
+| | 蜜罐 / 缺字段 / 非法邮箱 → 400 | 校验 |
+| | 同 IP 同内容重复 → 429 | 去重 |
+| `POST /api/admin/login` | 正确账密 → 200 且返回可验证 JWT | |
+| | 密码错误 → 401；缺字段 → 400 | |
+| `GET /api/inquiries/admin` | 无 token → 401；有效 token → 200 数组 | 鉴权中间件 |
+| `GET /api/products` | 只返回上架、按 sortOrder 降序 | 列表过滤/排序 |
+| | 命中 → 200；下架 → 404；不存在 → 404 | |
+| `POST /api/chat` | 空 messages / role 非法 / content 非串 → 400 | 入参校验（不触达 LLM） |
+
+**一个值得讲的工程点（Vitest × CommonJS）**：Vitest 的 `vi.mock` 拦不住 app 内部 CJS 模块之间的 `require`（CJS 子树被外部化，深层 require 走原生解析）。所以外部依赖没走模块 mock，而是用**确定生效且离线**的手段替代：
+- **geo** 用全局 `fetch`（调用时才取）→ `vi.stubGlobal('fetch', …)` 完全可控、不出网；
+- **邮件** 指向 `127.0.0.1:2`（本地无服务）→ 秒级 `ECONNREFUSED` → `emailed='failed'`，顺带覆盖「邮件失败≠提交失败」这条真实逻辑；
+- **LLM** 无法干净离线化 → chat happy-path 交给 `scripts/agent-eval.js`，集成层只测 400 校验。
+
+其余关键取舍：**先设 env → 再动态 `import` app**（限流器/uploadController 在 import 时读 env）；每用例独立 `X-Forwarded-For` 规避限流/去重串扰；集成测试文件用 ESM `import`（Vitest 模块处理需要），单元测试仍用 `require`。
+
 ---
 
 ## 8. 覆盖范围与取舍
 
 **重点覆盖**（价值高、易回归）：输入校验、鉴权、错误→状态码映射、agent 的确定性 helper、关键前端交互与安全兜底（图片改写、留资校验）。
 
+**重点覆盖（集成层新增）**：完整 HTTP 链路的落库/持久化、鉴权中间件、限流去重、错误状态码、产品列表过滤排序。
+
 **本期有意不测**：
 - glue/配置代码（`index.js`、`config.js`、路由装配）——收益低。
-- 依赖真实外部服务的部分（Mongo 查询、LLM 调用、S3 上传、邮件、geo）——交给后续**集成层 + mock**。
-- LLM 的语义质量——交给独立的 `scripts/agent-eval.js`（另一条轴）。
+- S3 上传、真实邮件投递、真实 geo 出网——不在离线测试范围。
+- LLM 的语义质量与 chat happy-path——交给独立的 `scripts/agent-eval.js`（另一条轴）。
 
 **覆盖率取向**：不追 100%，把力气压在上面「重点覆盖」区。
 
@@ -236,6 +265,6 @@ frontend/
 
 ## 9. 后续路线
 
-1. **CI（下一步）**：GitHub Actions，`install(缓存) → lint → test → build(前端)`，Node 20，LLM 全程 mock，`agent-eval` 不进 CI。
-2. **API 集成层**：supertest + `mongodb-memory-server` 打 `app.js`，覆盖 `/inquiries`、`/admin/login`、`/products`、`requireAdmin`、`/chat`（mock agent）。需处理的坑：限流器 import 时读 `MONGODB_URI`、限流致 flaky（用独立 `X-Forwarded-For`）、`setImmediate` 后台副作用。
-3. **E2E（可选）**：Playwright 冒烟，仅关键 happy path，路由 mock 后端/LLM。
+1. ~~CI~~ ✅ 已完成：GitHub Actions，`install(缓存) → lint → test → build(前端)`，Node 20，LLM 不参与，`agent-eval` 不进 CI。
+2. ~~API 集成层~~ ✅ 已完成：见 §7.3。
+3. **E2E（暂不做，作为已知下一步）**：Playwright 冒烟，仅关键 happy path（联系表单提交 / 后台登录 / 打开 ChatWidget）。当前判断：集成层已覆盖主要风险，E2E 成本高、ROI 低，故不铺开；真要加则控制在 1–3 条冒烟。

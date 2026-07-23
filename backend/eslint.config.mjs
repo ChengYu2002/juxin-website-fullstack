@@ -44,6 +44,13 @@ export default [
     },
   },
   {
+    // 集成测试用 ESM import（Vitest 模块 mock 需要）→ 覆盖为 sourceType: module
+    files: ['tests/integration/**/*.js'],
+    languageOptions: {
+      sourceType: 'module',
+    },
+  },
+  {
     ignores: ['dist/**'],
   },
 ]
