@@ -20,3 +20,11 @@ backend/.env
 docs
 scripts
 README.md
+
+# 测试文件不进生产镜像(运行时不引用;镜像更小、生产更干净)
+# 注意:不要排除 vite.config.js —— vite build 需要它
+**/*.test.js
+**/*.test.jsx
+backend/tests
+backend/vitest.config.mjs
+frontend/vitest.setup.js

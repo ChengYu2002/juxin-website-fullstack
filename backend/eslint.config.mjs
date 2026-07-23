@@ -28,6 +28,22 @@ export default [
     },
   },
   {
+    // Vitest 测试文件用全局 API（globals: true），这里声明避免 no-undef
+    files: ['tests/**/*.js'],
+    languageOptions: {
+      globals: {
+        describe: 'readonly',
+        it: 'readonly',
+        expect: 'readonly',
+        vi: 'readonly',
+        beforeAll: 'readonly',
+        afterAll: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+      },
+    },
+  },
+  {
     ignores: ['dist/**'],
   },
 ]
