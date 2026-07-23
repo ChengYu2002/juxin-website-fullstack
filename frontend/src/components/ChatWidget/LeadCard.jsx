@@ -14,6 +14,14 @@ import { Check, X, Loader2 } from 'lucide-react'
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const PLACEHOLDER_NAME = 'Website Visitor'
 
+// 把后端/网络错误映射成对买家友好的话术（别把 "duplicate submission" / "Too many inquiries"
+// 这类技术原文直接甩给买家）。429 同时覆盖限流和去重——两者都意味"可能已收到/请稍候"。
+function friendlyError(e) {
+  if (e?.status === 429) return 'Looks like we already got this — please wait a moment before resending.'
+  if (String(e?.message || '').includes('Failed to fetch')) return 'Cannot reach the server. Please try again shortly.'
+  return 'Something went wrong. Please try again.'
+}
+
 export default function LeadCard({ lead, onSubmit, onCancel }) {
   const [name, setName] = useState((lead.name || '').trim())
   const [email, setEmail] = useState((lead.email || '').trim())
@@ -45,7 +53,7 @@ export default function LeadCard({ lead, onSubmit, onCancel }) {
       setStatus('success')
     } catch (e) {
       setStatus('error')
-      setErrMsg(e?.message || 'Failed to send, please retry.')
+      setErrMsg(friendlyError(e))
     }
   }
 

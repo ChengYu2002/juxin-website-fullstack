@@ -39,10 +39,15 @@ function extractLead(text) {
   try {
     const obj = JSON.parse(m[1].trim())
     if (obj && typeof obj === 'object') {
-      lead = {
-        name: typeof obj.name === 'string' ? obj.name : '',
-        email: typeof obj.email === 'string' ? obj.email : '',
-        summary: typeof obj.summary === 'string' ? obj.summary : '',
+      const email = typeof obj.email === 'string' ? obj.email.trim() : ''
+      // 防御：模型偶尔在还没拿到邮箱时误吐一个 email 为空的块 → 无视它、不出卡
+      // （正文里剥掉标记后的"请留个邮箱"照常显示）
+      if (email) {
+        lead = {
+          name: typeof obj.name === 'string' ? obj.name : '',
+          email,
+          summary: typeof obj.summary === 'string' ? obj.summary : '',
+        }
       }
     }
   } catch {
@@ -53,7 +58,7 @@ function extractLead(text) {
 
 const WELCOME = {
   role: 'assistant',
-  content: '您好！我是巨鑫的售前助理 Jason，可以帮您了解购物手推车、露营拖车等产品。请问有什么可以帮您？',
+  content: 'Hi! I\'m Jason, Juxin\'s pre-sales assistant — here for our shopping trolleys, utility carts, camping wagons and more. Ask me anything, in any language.',
 }
 
 export default function ChatWidget() {
@@ -189,7 +194,7 @@ export default function ChatWidget() {
       const { visible, lead } = extractLead(reply)
       setMessages((prev) => [...prev, { role: 'assistant', content: visible, lead }])
     } catch (err) {
-      setError(err.message || '发送失败')
+      setError(err.message || 'Something went wrong. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -246,7 +251,7 @@ export default function ChatWidget() {
       {open && (
         <div
           role="dialog"
-          aria-label="巨鑫售前助理"
+          aria-label="Juxin pre-sales assistant"
           style={mobilePanelStyle}
           className="
             fixed z-[1001] flex flex-col overflow-hidden text-white
@@ -264,11 +269,11 @@ export default function ChatWidget() {
             <div className="flex items-center justify-between border-b border-white/10 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.7)]" />
-                <span className="text-sm font-semibold">巨鑫售前助理 · Jason</span>
+                <span className="text-sm font-semibold">Juxin Sales · Jason</span>
               </div>
               <button
                 onClick={() => setOpen(false)}
-                aria-label="关闭"
+                aria-label="Close"
                 className="-mr-1 grid h-8 w-8 place-items-center rounded-full text-white/60 transition hover:bg-white/10 hover:text-white"
               >
                 <X size={20} />
@@ -302,9 +307,15 @@ export default function ChatWidget() {
                   </Fragment>
                 ),
               )}
+              {/* 多语问候微条：只在开场（仅欢迎语）时出现，暗示"随便用哪种语言"，一开聊就消失 */}
+              {messages.length === 1 && (
+                <div className="self-start px-1 pt-0.5 text-xs leading-relaxed text-white/40">
+                  🌐 你好 · Hola · Bonjour · مرحبا · こんにちは · 안녕하세요
+                </div>
+              )}
               {loading && (
                 <div className="max-w-[85%] self-start rounded-2xl rounded-bl-md border border-white/10 bg-white/10 px-4 py-3 text-white/70">
-                  <span className="cw-typing" role="status" aria-label="Jason 正在输入">
+                  <span className="cw-typing" role="status" aria-label="Jason is typing">
                     <span></span>
                     <span></span>
                     <span></span>
@@ -323,7 +334,7 @@ export default function ChatWidget() {
               <textarea
                 ref={taRef}
                 rows={1}
-                placeholder="输入问题…"
+                placeholder="Type your question…"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
@@ -337,7 +348,7 @@ export default function ChatWidget() {
               <button
                 onClick={handleSend}
                 disabled={loading || !input.trim()}
-                aria-label="发送"
+                aria-label="Send"
                 className="
                   grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-neutral-900
                   transition hover:bg-white/90 disabled:bg-white/20 disabled:text-white/40
@@ -372,11 +383,11 @@ export default function ChatWidget() {
               }}
               className="cursor-pointer truncate"
             >
-              👋 你好，我是售前助理 Jason
+              👋 Hi, I'm Jason — sales assistant
             </button>
             <button
               onClick={() => setHint('dismissed')}
-              aria-label="关闭提示"
+              aria-label="Dismiss"
               className="grid h-5 w-5 shrink-0 place-items-center rounded-full text-white/50 transition hover:bg-white/10 hover:text-white"
             >
               <X size={13} />
@@ -404,7 +415,7 @@ export default function ChatWidget() {
                 setOpen((v) => !v)
                 setHint('dismissed')
               }}
-              aria-label={open ? '收起助理' : '打开助理'}
+              aria-label={open ? 'Close assistant' : 'Open assistant'}
               className="
                 relative grid h-14 w-14 place-items-center rounded-full
                 border border-white/20 bg-neutral-900/70 text-white

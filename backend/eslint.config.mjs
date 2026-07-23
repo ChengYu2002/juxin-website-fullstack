@@ -28,6 +28,29 @@ export default [
     },
   },
   {
+    // Vitest 测试文件用全局 API（globals: true），这里声明避免 no-undef
+    files: ['tests/**/*.js'],
+    languageOptions: {
+      globals: {
+        describe: 'readonly',
+        it: 'readonly',
+        expect: 'readonly',
+        vi: 'readonly',
+        beforeAll: 'readonly',
+        afterAll: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+      },
+    },
+  },
+  {
+    // 集成测试用 ESM import（Vitest 模块 mock 需要）→ 覆盖为 sourceType: module
+    files: ['tests/integration/**/*.js'],
+    languageOptions: {
+      sourceType: 'module',
+    },
+  },
+  {
     ignores: ['dist/**'],
   },
 ]

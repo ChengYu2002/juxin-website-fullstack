@@ -15,7 +15,7 @@ export async function sendChat(messages, conversationId) {
   })
 
   if (!res.ok) {
-    let errorMessage = '对话服务暂不可用，请稍后再试'
+    let errorMessage = 'Chat is temporarily unavailable. Please try again shortly.'
     try {
       const data = await res.json()
       if (data?.error) errorMessage = data.error

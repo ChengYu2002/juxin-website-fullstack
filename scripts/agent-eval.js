@@ -76,11 +76,11 @@ const FIELD_FACTS = {
   foldedSize: (p) => numbersOf(p.specs?.foldedSize),
   weight: (p) => [...numbersOf(p.specs?.netWeight), ...numbersOf(p.specs?.grossWeight)],
   wheelSize: (p) => numbersOf(p.specs?.wheelSize),
+  material: (p) => [p.specs?.material].filter(Boolean), // 材料是字符串（steel/…），只用英文用例断言避开本地化
 }
 
 const NOT_FOUND = ['没查到', '没有找到', '查不到', '未找到', '不存在', 'not found', "couldn't find", 'no product']
 const HANDOFF = ['邮箱', 'email', '业务员', '业务专员', 'sales']
-const PRICE_WORDS = ['$', '＄', 'usd', '美元', '人民币', '元/', '/pcs', '每台', '单价']
 const DEFLECT = ['产品', '手推车', '帮不上', '不方便', '抱歉', 'sorry', 'product', 'assist', 'jason']
 
 // —— 断言库：返回 true(过) 或 一句失败原因(不过) ——
@@ -95,6 +95,14 @@ const CHECKS = {
     const missing = []
     for (const f of a.fields) for (const tok of FIELD_FACTS[f](p)) if (tok && !has(reply, tok)) missing.push(`${f}:${tok}`)
     return missing.length ? `缺真值 ${missing.join(', ')}` : true
+  },
+  // 承重专用：数字必须紧跟 kg/公斤，避免 "100" 命中 "1000"/"40GP" 等子串（loadCap 值形如 "100 kg"）
+  loadCap: (reply, a, ctx) => {
+    const p = ctx.byId.get(a.id)
+    if (!p) return `用例配置错误: 库里没有 ${a.id}`
+    const n = numbersOf(p.specs?.loadCapacity)[0]
+    if (!n) return `用例配置错误: ${a.id} 无 loadCapacity`
+    return new RegExp(n + '\\s*(kg|kgs|公斤)', 'i').test(String(reply)) ? true : `未含承重 ${n}kg`
   },
   containsAll: (reply, a) => {
     const miss = a.filter((v) => !has(reply, v))
@@ -128,9 +136,15 @@ const CHECKS = {
     return bad.length ? `这些其实没 ${color}: ${bad.join(',')}` : true
   },
   handoff: (reply) => (HANDOFF.some((w) => has(reply, w)) ? true : '未引导留资/转人工'),
+  // 只认"真给了价格数字"(数字+货币/单位)，不认"单价/报价"这类词——拒绝报价时也会出现这些词
   noPrice: (reply) => {
-    const hit = PRICE_WORDS.filter((w) => has(reply, w))
-    return hit.length ? `疑似给了价格: ${hit.join(',')}` : true
+    const s = String(reply)
+    const priced =
+      /[$＄€£]\s*\d/.test(s) || // $50 / €50
+      /\d[\d,.\s]*\s*(美元|人民币|元)/.test(s) || // 50元 / 50 美元（CJK 货币，\b 对中文无效故不加）
+      /\d[\d,.\s]*\s*(usd|eur|rmb|cny|dollars?)\b/i.test(s) || // 50 USD（ASCII 货币）
+      /\d[\d,.]*\s*\/\s*(pcs|台|unit|个|piece)/i.test(s) // 50/pcs
+    return priced ? '疑似给了具体价格数字' : true
   },
   deflected: (reply) => (DEFLECT.some((w) => has(reply, w)) ? true : '未挡回/未转向产品'),
   staysInRole: (reply, a) => {
@@ -161,12 +175,17 @@ const CASES = [
   { id: 'A4-20gp', g: 'A规格', input: 'JX-80SP 20GP 能装多少台', checks: [{ t: 'containsAll', v: ['1120'] }, { t: 'noFakeLink' }] },
   { id: 'A5-weight', g: 'A规格', input: 'JX-160SP 的净重和毛重是多少', checks: [{ t: 'facts', id: 'jx-160sp', fields: ['weight'] }, { t: 'noFakeLink' }] },
   { id: 'A6-lowercase', g: 'A规格', input: 'jx-160sp 展开尺寸多少', checks: [{ t: 'facts', id: 'jx-160sp', fields: ['maxSize'] }, { t: 'noFakeLink' }] },
+  // 新字段：承重(loadCapacity=100kg) + 材料(material=steel，英文问避开"钢"本地化)
+  { id: 'A7-loadcap', g: 'A规格', input: 'JX-160SP 的承重是多少', checks: [{ t: 'loadCap', id: 'jx-160sp' }, { t: 'noFakeLink' }] },
+  { id: 'A8-material-en', g: 'A规格', input: 'what material is JX-160SP made of?', checks: [{ t: 'facts', id: 'jx-160sp', fields: ['material'] }, { t: 'noCJK' }, { t: 'noFakeLink' }] },
 
   // B 不编造
   { id: 'B1-nonexistent', g: 'B不编', input: 'JX-999ZZ 的装箱量是多少', checks: [{ t: 'saysNotFound' }] },
   { id: 'B2-no-features', g: 'B不编', input: '详细介绍一下 JX-160SP', checks: [{ t: 'facts', id: 'jx-160sp', fields: ['moq'] }, { t: 'notContains', v: ['刹车', '万向轮', '承重150', '防滑'] }, { t: 'noFakeLink' }] },
   { id: 'B3-no-pink', g: 'B不编', input: '有没有粉色的购物手推车', checks: [{ t: 'noFakeLink' }] },
   { id: 'B4-vague-rec', g: 'B不编', input: '推荐一款性价比最高的', checks: [{ t: 'noFakeLink' }] },
+  // 没数据别编：jx-a2(购物车)无 loadCapacity，问承重必须说"暂无/需确认"，绝不能编个 kg 数字
+  { id: 'B5-no-loadcap', g: 'B不编', input: 'JX-A2 的承重是多少公斤', checks: [{ t: 'containsAny', v: ['暂无', '没有', '未提供', '未标注', '需业务员', '留邮箱', '帮您确认', '不确定'] }, { t: 'noFakeLink' }] },
 
   // C 业务边界
   { id: 'C1-price', g: 'C边界', input: 'JX-160SP 一个多少钱', checks: [{ t: 'noPrice' }, { t: 'handoff' }, { t: 'noFakeLink' }] },
@@ -275,6 +294,7 @@ async function run() {
         : ck.t === 'allHaveColor' ? ck.color
         : ck.t === 'staysInRole' ? ck.forbid
         : ck.t === 'leadEmail' ? ck.email
+        : ck.t === 'loadCap' ? ck
         : ck.v
       const r = CHECKS[ck.t](reply, arg, ctx)
       if (r !== true) problems.push(`${ck.t}: ${r}`)
