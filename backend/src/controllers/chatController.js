@@ -33,13 +33,13 @@ async function postChat(req, res, next) {
 
     // —— 基础校验 ——
     if (!Array.isArray(messages) || messages.length === 0) {
-      return res.status(400).json({ error: 'messages 必须是非空数组' })
+      return res.status(400).json({ error: 'messages must be a non-empty array' })
     }
     const ok = messages.every(
       (m) => m && typeof m.content === 'string' && ['user', 'assistant'].includes(m.role),
     )
     if (!ok) {
-      return res.status(400).json({ error: '每条 message 需含 role(user|assistant) 和 content(string)' })
+      return res.status(400).json({ error: 'Each message must have role (user|assistant) and content (string)' })
     }
 
     const directive = languageDirective(messages)
@@ -66,7 +66,7 @@ async function postChat(req, res, next) {
     // 限流/配额等给前端友好提示，其余交给全局 errorHandler
     const status = err.status ?? err?.response?.status
     if (status === 429) {
-      return res.status(429).json({ error: 'AI 暂时繁忙或配额已满，请稍后再试' })
+      return res.status(429).json({ error: 'The assistant is busy right now. Please try again shortly.' })
     }
     next(err)
   }
