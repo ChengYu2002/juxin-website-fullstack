@@ -328,10 +328,10 @@
     <p class="lede">一个扎根真实产品库、能精确答规格、并把高意向访客沉淀为结构化询盘的 B2B 售前助理 —— 严格止步于报价/库存/交期之前。</p>
     <div class="meta">
       <span><b>项目</b> Juxin Manufacturing</span>
-      <span><b>版本</b> v0.2</span>
-      <span><b>状态</b> P2 + 防幻觉四道 + eval + 敏感挡回 已实现；P4 抓询盘 / P5 RAG 待做</span>
+      <span><b>版本</b> v0.3</span>
+      <span><b>状态</b> 产品工具 + 防幻觉 + Human-in-the-loop 询盘 + 45 条 Agent eval + CI 已实现；P5 RAG / 性能观测待做</span>
       <span><b>分支</b> dev-v3-agent</span>
-      <span><b>日期</b> 2026-07-22</span>
+      <span><b>日期</b> 2026-07-23</span>
     </div>
   </header>
 
@@ -348,13 +348,14 @@
       <li><a href="#s8"><span class="n">08</span>RAG 设计</a></li>
       <li><a href="#s9"><span class="n">09</span>模型选型</a></li>
       <li><a href="#s10"><span class="n">10</span>防幻觉与边界</a></li>
-      <li><a href="#s11"><span class="n">11</span>会话与记忆</a></li>
-      <li><a href="#s12"><span class="n">12</span>数据模型</a></li>
+      <li><a href="#s11"><span class="n">11</span>会话策略</a></li>
+      <li><a href="#s12"><span class="n">12</span>数据模型与动作契约</a></li>
       <li><a href="#s13"><span class="n">13</span>成功指标与评估</a></li>
       <li><a href="#s14"><span class="n">14</span>开发里程碑</a></li>
       <li><a href="#s15"><span class="n">15</span>技术栈与部署</a></li>
       <li><a href="#s16"><span class="n">16</span>范围纪律</a></li>
       <li><a href="#s17"><span class="n">17</span>面试价值映射</a></li>
+      <li><a href="#s18"><span class="n">18</span>后续强化拓展</a></li>
     </ol>
   </nav>
 
@@ -364,7 +365,7 @@
     <p>目标:用一个售前 AI 助理把业务员重复回答的问题前置到官网自动答掉,并把高意向访客转化成一条<strong>更完整的结构化询盘</strong>,同时对超出能力边界的问题(报价/库存/交期)干净地转人工。</p>
     <ul class="tight">
       <li><strong>业务目标</strong> —— 降低业务员重复答疑负担;提升询盘质量与转化。</li>
-      <li><strong>工程目标</strong> —— 在真实业务系统中落地一个有状态、有工具调用、有 RAG 的 Agent。</li>
+      <li><strong>工程目标</strong> —— 在真实业务系统中落地一个有工具调用、可评测、带人工确认业务动作的 Agent；再以真实企业资料扩展 RAG。</li>
     </ul>
   </section>
 
@@ -403,7 +404,7 @@
         <thead><tr><th>用户</th><th>特征</th><th>诉求</th></tr></thead>
         <tbody>
           <tr><td class="k">海外 B2B 买家</td><td>匿名、<strong>无账号</strong>、多语言、采购导向</td><td>快速问清规格/MOQ/装箱;低摩擦留资(不想注册)</td></tr>
-          <tr><td class="k">内部业务员</td><td>已有 admin 后台</td><td>拿到结构化询盘 + 能回看 Agent 对话做背景</td></tr>
+          <tr><td class="k">内部业务员</td><td>已有 admin 后台</td><td>拿到经买家确认的结构化询盘并人工跟进</td></tr>
         </tbody>
       </table>
     </div>
@@ -418,13 +419,13 @@
           <tr><td class="k">产品规格问答</td><td>"JX-80SP 装箱量?"返回精确值,不幻觉</td><td>tool calling → 现有产品接口</td><td><span class="pill must">Must</span></td></tr>
           <tr><td class="k">推荐 / 对比</td><td>"给超市推手推车" / "A 和 B 比一比"</td><td>tool calling → 列表查询</td><td><span class="pill must">Must</span></td></tr>
           <tr><td class="k">防幻觉 + 转人工</td><td>越界问题干净拒绝并引导留资</td><td>system prompt + 分支</td><td><span class="pill must">Must</span></td></tr>
-          <tr><td class="k">对话记忆</td><td>多轮上下文</td><td>匿名 conversationId + 重发历史</td><td><span class="pill must">Must</span></td></tr>
-          <tr><td class="k">抓询盘(闭环)</td><td>收集 name/email/需求 → 结构化 inquiry 落库并邮件通知</td><td>tool calling → 现有 inquiry 系统</td><td><span class="pill must">Must</span></td></tr>
+          <tr><td class="k">会话内多轮上下文</td><td>理解“第一款”“它”“换成蓝色”等追问</td><td>浏览器持有 messages 并逐轮重发；不做服务端持久化</td><td><span class="pill must">Must</span></td></tr>
+          <tr><td class="k">抓询盘(HITL闭环)</td><td>提取 name/email/需求 → 确认卡 → 买家点击确认 → inquiry 落库并邮件通知</td><td>结构化 lead 动作 + LeadCard + 现有 inquiry API</td><td><span class="pill must">Must</span></td></tr>
           <tr><td class="k">多语言</td><td>买家用什么语言就用什么答</td><td>模型原生能力</td><td><span class="pill must">Must</span></td></tr>
-          <tr><td class="k">公司软信息问答</td><td>OEM/认证/工厂验厂等</td><td>RAG(Atlas Vector Search)</td><td><span class="pill nice">Nice</span></td></tr>
-          <tr><td class="k">后台对话日志</td><td>对话 + 工具调用记录,业务员可回看</td><td>Mongo + admin 后台</td><td><span class="pill nice">Nice</span></td></tr>
-          <tr><td class="k">小型评估集</td><td>20–30 条问答,能报准确率</td><td>eval 脚本</td><td><span class="pill nice">Nice</span></td></tr>
-          <tr><td class="k">工具经 MCP 暴露</td><td>工具封装成 MCP server</td><td>MCP SDK(独立服务)</td><td><span class="pill stretch">Stretch</span></td></tr>
+          <tr><td class="k">公司软信息问答</td><td>OEM/认证/工厂验厂等</td><td>P5 规划：RAG（Atlas Vector Search）</td><td><span class="pill nice">Nice</span></td></tr>
+          <tr><td class="k">Agent 可观测性</td><td>模型/工具耗时、调用次数、Token、重试与失败原因</td><td>结构化日志 / Trace / 指标，不保存完整买家对话</td><td><span class="pill nice">Nice</span></td></tr>
+          <tr><td class="k">行为评测 + 工程测试</td><td>45 条 Agent eval；后端 52 + 前端 24 项 Vitest</td><td>自定义 eval + Vitest + Supertest + CI</td><td><span class="pill must">Must</span></td></tr>
+          <tr><td class="k">工具经 MCP 暴露</td><td>工具封装成 MCP server</td><td>P8 可选规划：MCP SDK</td><td><span class="pill stretch">Stretch</span></td></tr>
         </tbody>
       </table>
     </div>
@@ -444,8 +445,8 @@
         <rect class="n-box" x="30" y="40" width="200" height="86" rx="10"/>
         <text class="svg-lbl" x="46" y="62">FRONTEND · REACT</text>
         <text class="svg-t" x="46" y="84">ChatWidget</text>
-        <text class="svg-s" x="46" y="103">messages[] · conversationId</text>
-        <text class="svg-s" x="46" y="118">POST /api/chat</text>
+        <text class="svg-s" x="46" y="103">messages[]（浏览器持有）</text>
+        <text class="svg-s" x="46" y="118">ChatWidget · LeadCard</text>
 
         <!-- agent orchestration -->
         <rect class="n-box acc" x="330" y="24" width="230" height="150" rx="10"/>
@@ -454,25 +455,25 @@
         <text class="svg-s" x="348" y="90">system prompt + 历史 + 工具</text>
         <text class="svg-s" x="348" y="107">调模型 → 要工具? → 执行</text>
         <text class="svg-s" x="348" y="124">→ 喂回 → 循环 → 回答</text>
-        <text class="svg-s" x="348" y="150">(独立服务 或 后端路由)</text>
+        <text class="svg-s" x="348" y="150">现有 Express 后端模块</text>
 
         <!-- tools -->
         <rect class="n-box" x="330" y="212" width="230" height="96" rx="10"/>
         <text class="svg-lbl" x="348" y="234">TOOLS 层</text>
         <text class="svg-s" x="348" y="256">getProduct()</text>
         <text class="svg-s" x="348" y="273">searchProducts()</text>
-        <text class="svg-s" x="348" y="290">createInquiry()</text>
+        <text class="svg-s" x="348" y="290">仅只读产品工具</text>
 
         <!-- model -->
         <rect class="n-box" x="630" y="40" width="200" height="86" rx="10"/>
-        <text class="svg-lbl" x="646" y="62">MODEL(免费档)</text>
-        <text class="svg-t" x="646" y="84">Gemini / Groq</text>
-        <text class="svg-s" x="646" y="103">OpenAI 兼容 · 可切换</text>
-        <text class="svg-s" x="646" y="118">↔ 本地 Ollama</text>
+        <text class="svg-lbl" x="646" y="62">MODEL · DASHSCOPE</text>
+        <text class="svg-t" x="646" y="84">Qwen Plus / Flash</text>
+        <text class="svg-s" x="646" y="103">主线 / 寒暄分级</text>
+        <text class="svg-s" x="646" y="118">OpenAI 兼容 · 可切换</text>
 
         <!-- knowledge / RAG -->
         <rect class="n-box" x="630" y="212" width="200" height="96" rx="10"/>
-        <text class="svg-lbl" x="646" y="234">KNOWLEDGE · RAG</text>
+        <text class="svg-lbl" x="646" y="234">KNOWLEDGE · RAG (P5)</text>
         <text class="svg-s" x="646" y="256">公司软信息切块</text>
         <text class="svg-s" x="646" y="273">embedding + 检索</text>
         <text class="svg-s" x="646" y="290">注入 prompt</text>
@@ -481,8 +482,8 @@
         <rect class="n-box ext" x="330" y="352" width="230" height="86" rx="10"/>
         <text class="group-t" x="348" y="374">STORAGE / EXTERNAL</text>
         <text class="svg-s" x="348" y="396">MongoDB Atlas</text>
-        <text class="svg-s" x="348" y="413">conversations · inquiry</text>
-        <text class="svg-s" x="348" y="430">Atlas Vector Search · OSS</text>
+        <text class="svg-s" x="348" y="413">products · inquiries</text>
+        <text class="svg-s" x="348" y="430">OSS · Vector Search(P5)</text>
 
         <!-- edges -->
         <path class="edge" d="M230,83 L326,83" marker-end="url(#ah)"/>
@@ -492,80 +493,43 @@
         <path class="edge" d="M445,308 L445,348" marker-end="url(#ah)"/>
       </svg>
     </div>
-    <p class="cap">图 1 · 系统架构。Tools 层是"给现有 controller 包一层给模型看的说明",不是新写业务逻辑。</p>
+    <p class="cap">图 1 · 当前系统架构。Agent 的产品工具直调共享 productService；询盘由 Agent 生成 lead 草稿、买家在 LeadCard 明确确认后走现有 /api/inquiries，不把写操作交给模型自动执行。</p>
   </section>
 
   <section id="s6">
     <h2 class="sec"><span class="num">06</span>Agent 状态设计</h2>
-    <p class="sec-note">分清三种"状态":UI 运行状态(前端 spinner)、对话数据状态(要 carry)、控制流状态(LangGraph 节点)。</p>
+    <p class="sec-note">当前刻意保持状态最小化：浏览器负责本轮会话上下文，LangGraph 只负责单次请求内的 Agent/Tool 消息循环；不建设 conversations 集合。</p>
 
-    <h3>① 数据状态(跨轮次携带)</h3>
-    <pre><span class="c">// conversations 集合里一条会话的状态</span>
-{
-  conversationId,          <span class="c">// 匿名号牌(localStorage)</span>
-  messages: [...],         <span class="c">// 历史,喂回模型 = "记忆"</span>
-  collectedLead: {         <span class="c">// 边聊边攒,决定能否写询盘</span>
-    name?, email?, product?, quantity?, destination?
+    <h3>① 浏览器会话状态（不落库）</h3>
+    <pre>{
+  messages: [...],         <span class="c">// ChatWidget 内存状态；每轮随 /api/chat 重发</span>
+  pendingLead?: {          <span class="c">// 模型输出的 lead 草稿，经前端解析成确认卡</span>
+    name, email, summary
   }
 }</pre>
 
-    <h3>② 控制流状态(LangGraph 状态图)</h3>
-    <div class="diagram">
-      <svg viewBox="0 0 860 430" role="img" aria-label="LangGraph 状态图">
-        <defs>
-          <marker id="ah2" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path class="arrowhead" d="M0,0 L9,4.5 L0,9 Z"/></marker>
-          <marker id="aha2" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path class="arrowhead acc" d="M0,0 L9,4.5 L0,9 Z"/></marker>
-        </defs>
+    <h3>② 当前 LangGraph 控制流</h3>
+    <pre>START → agent(Qwen Plus + tools)
+              ├─ 有 tool_calls → ToolNode → agent
+              └─ 无 tool_calls → END
 
-        <!-- START -->
-        <rect class="n-box" x="40" y="180" width="92" height="44" rx="22"/>
-        <text class="svg-t" x="66" y="207">START</text>
+产品意图首轮可强制 tool_choice:'required'
+最终文本再做产品链接对库校验 → 失败则强制重试 → 仍失败则安全兜底</pre>
 
-        <!-- agent node -->
-        <rect class="n-box acc" x="200" y="160" width="180" height="84" rx="10"/>
-        <text class="svg-lbl" x="216" y="182">NODE · AGENT</text>
-        <text class="svg-t" x="216" y="205">LLM 决策</text>
-        <text class="svg-s" x="216" y="224">prompt + 工具 + 状态</text>
+    <h3>③ 询盘动作状态（Human-in-the-loop）</h3>
+    <pre>Agent 输出 lead 草稿
+→ ChatWidget 解析
+→ LeadCard 展示并允许买家编辑
+→ 买家点击确认
+→ POST /api/inquiries
+→ inquiry 落库
+→ 后台异步 geo / 邮件 / emailed 状态回写</pre>
 
-        <!-- branches -->
-        <rect class="n-box" x="470" y="24" width="180" height="64" rx="10"/>
-        <text class="svg-lbl" x="486" y="46">查产品</text>
-        <text class="svg-s" x="486" y="66">tools 节点</text>
-        <text class="svg-s" x="486" y="82">查完循环回 agent</text>
-
-        <rect class="n-box warnn" x="470" y="112" width="180" height="60" rx="10"/>
-        <text class="svg-lbl" x="486" y="134" style="fill:var(--warn)">拒绝 / 转人工</text>
-        <text class="svg-s" x="486" y="154">越界 · prompt 驱动</text>
-
-        <rect class="n-box" x="470" y="196" width="180" height="64" rx="10"/>
-        <text class="svg-lbl" x="486" y="218">继续追问</text>
-        <text class="svg-s" x="486" y="238">信息不足时</text>
-        <text class="svg-s" x="486" y="254">回 agent 收集</text>
-
-        <rect class="n-box acc" x="470" y="284" width="180" height="72" rx="10"/>
-        <text class="svg-lbl" x="486" y="306">写询盘</text>
-        <text class="svg-s" x="486" y="326">create_inquiry 节点</text>
-        <text class="svg-s" x="486" y="343">lead 满足 → 给业务员发邮件</text>
-
-        <!-- END -->
-        <rect class="n-box" x="730" y="300" width="92" height="44" rx="22"/>
-        <text class="svg-t" x="760" y="327">END</text>
-
-        <!-- edges -->
-        <path class="edge" d="M132,202 L196,202" marker-end="url(#ah2)"/>
-        <path class="edge acc" d="M380,185 C430,150 430,90 466,66" marker-end="url(#aha2)"/>
-        <path class="edge" d="M470,142 C440,150 420,175 384,192" marker-end="url(#ah2)"/>
-        <path class="edge" d="M380,215 C420,222 430,226 466,228" marker-end="url(#ah2)"/>
-        <path class="edge acc" d="M380,232 C430,280 430,310 466,318" marker-end="url(#aha2)"/>
-        <path class="edge" d="M650,66 C700,80 690,150 384,200" marker-end="url(#ah2)"/>
-        <path class="edge acc" d="M650,320 L726,322" marker-end="url(#aha2)"/>
-      </svg>
-    </div>
-    <p class="cap">图 2 · LangGraph 状态图。只建"结构性"状态(有无 lead / 是否越界 / 是否在工具调用),对话措辞交给 LLM。</p>
+    <p class="cap">当前没有 create_inquiry LangGraph 节点，也不让模型直接执行写操作；用户确认是事务边界。</p>
 
     <div class="callout warnbox">
       <span class="tag">避坑</span>
-      <p>"查询中 / 回答中"<strong>不是 Agent 状态</strong>,是前端根据事件显示的 UI status,别建模进逻辑。状态别过度细分,否则 Agent 会僵、丢掉 LLM 的灵活性。</p>
+      <p>"查询中 / 回答中"<strong>不是业务状态</strong>，是前端 UI status。若后续做流式输出，以事件驱动展示即可，不需要为它扩展持久化状态。</p>
     </div>
   </section>
 
@@ -575,25 +539,25 @@
       <table>
         <thead><tr><th>工具</th><th>输入</th><th>输出</th><th>映射</th></tr></thead>
         <tbody>
-          <tr><td class="k">getProduct</td><td>idOrSlug</td><td>单个产品(含 specs / variants)</td><td>getPublicProductByIdorSlug</td></tr>
-          <tr><td class="k">searchProducts</td><td>category?, keyword?</td><td>产品列表(精简字段)</td><td>getPublicProducts</td></tr>
-          <tr><td class="k">createInquiry</td><td>name, email, message, (产品/数量)</td><td>inquiryId</td><td>现有 inquiry 系统 + 邮件</td></tr>
+          <tr><td class="k">getProduct</td><td>idOrSlug</td><td>单个产品（specs / variants / features）</td><td><code>productService.getPublicByIdOrSlug</code></td></tr>
+          <tr><td class="k">searchProducts</td><td>category?, keyword?, color?</td><td>产品列表（精简字段）</td><td><code>productService.listPublic</code></td></tr>
+          <tr><td class="k">lead action（非 Tool）</td><td>name, email, summary</td><td>可编辑的 LeadCard</td><td>买家确认后 <code>POST /api/inquiries</code></td></tr>
         </tbody>
       </table>
     </div>
     <div class="callout">
       <span class="tag">硬约束</span>
-      <p>规格/数字问题<strong>必须</strong>走 <code>getProduct</code> / <code>searchProducts</code> 取真值,禁止模型自答。<code>createInquiry</code> 仅在 <code>collectedLead</code> 含 name + email 时允许触发。</p>
+      <p>规格/数字问题<strong>必须</strong>走 <code>getProduct</code> / <code>searchProducts</code> 取真值，禁止模型自答。询盘属于写操作，模型只能生成包含买家真实姓名、邮箱和需求摘要的候选 action；未经过买家确认不得落库或发邮件。</p>
     </div>
     <div class="callout warnbox">
       <span class="tag">落地状态</span>
-      <p><code>searchProducts</code> / <code>getProduct</code> <strong>已实现并端到端跑通</strong>（<code>agent/tools.js</code>，直调 <code>productService</code>）；<code>getProduct</code> 现已含结构化<strong>特征字段</strong>（<code>features</code>: foldable/brake/伸缩… · <code>loadCapacity</code> 承重 · <code>material</code> 材料）。<code>createInquiry</code> 属 <strong>P4 规划,尚未落地</strong> —— 本表列出是目标形态,当前"抓询盘"只会引导买家留邮箱,还未真正落库/发邮件。</p>
+      <p><code>searchProducts</code> / <code>getProduct</code> <strong>已实现并端到端跑通</strong>（<code>agent/tools.js</code>，直调 <code>productService</code>）；<code>getProduct</code> 已含结构化<strong>特征字段</strong>（<code>features</code>、<code>loadCapacity</code>、<code>material</code>）。P4 询盘闭环也已落地：模型输出 <code>lead</code> 候选块，前端解析为 LeadCard，买家编辑并确认后复用现有 inquiry API / <code>inquiryService</code> 完成落库与异步邮件。它刻意不是 LangGraph 写入 Tool。</p>
     </div>
   </section>
 
   <section id="s8">
     <h2 class="sec"><span class="num">08</span>RAG 设计</h2>
-    <p>硬规格走 tool calling(精确);<strong>软信息</strong>(公司简介、认证、OEM/ODM、包装出货、FAQ)走 RAG。内容量小,pipeline 要真、规模可小。</p>
+    <p class="sec-note"><strong>本节是 P5 规划，当前尚未实现。</strong>硬规格继续走 tool calling（精确）；公司简介、认证、OEM/ODM、包装出货、FAQ 等软信息再走 RAG。内容量可以小，但 pipeline 与评估必须真实。</p>
     <ul class="tight">
       <li><strong>第 0 步</strong> —— 先把软内容<em>写出来</em>(现状 <code>company.mock.js</code> 太薄),这是真正的工作量。</li>
       <li><strong>Pipeline</strong> —— chunk → embedding → 存 Atlas Vector Search → 相似度检索 → 注入 prompt。</li>
@@ -607,20 +571,20 @@
 
   <section id="s9">
     <h2 class="sec"><span class="num">09</span>模型选型</h2>
-    <p>关键不是"智商",是 <strong>tool calling 可靠性 + 多语言 + 不幻觉</strong>。太小的模型(7B)在工具调用上会飘。甜点区是 Flash 级 / 70B 级 —— 而这一档有免费的。</p>
+    <p>关键不是抽象的“智商”，而是 <strong>tool calling 可靠性 + 多语言 + 不幻觉 + 延迟/成本</strong>。不同意图分级用模型，但产品真值路线不能为了快而牺牲工具调用。</p>
     <div class="tbl-wrap">
       <table>
         <thead><tr><th>方案</th><th>免费</th><th>Tool Calling</th><th>可部署</th><th>用途</th></tr></thead>
         <tbody>
-          <tr><td class="k">Gemini Flash</td><td>✔ 免费额度</td><td>✔</td><td>✔</td><td>主力(托管)</td></tr>
-          <tr><td class="k">Groq · Llama 70B</td><td>✔ 免费额度</td><td>✔</td><td>✔</td><td>主力 + "开源"标签</td></tr>
-          <tr><td class="k">本地 Ollama</td><td>✔ 永久</td><td>⚠ 小模型弱</td><td>✘ Render 无 GPU</td><td>学原理 / 离线</td></tr>
+          <tr><td class="k">Qwen Plus</td><td>按 DashScope 额度/计费</td><td>✔ 当前可靠主线</td><td>✔ 托管 API</td><td>产品查询、推荐、规格问答</td></tr>
+          <tr><td class="k">Qwen Flash</td><td>按 DashScope 额度/计费</td><td>⚠ 不承担产品主线</td><td>✔ 托管 API</td><td>纯寒暄快速通道</td></tr>
+          <tr><td class="k">其他 OpenAI-compatible 模型</td><td>视供应商</td><td>必须跑 45 条 eval</td><td>视供应商</td><td>成本/延迟候选，不直接宣称可替换</td></tr>
         </tbody>
       </table>
     </div>
     <p>用 <strong>OpenAI 兼容 SDK</strong> 写,endpoint 可换 —— "模型无关、可切换"本身是工程加分点。</p>
     <div class="callout">
-      <span class="tag">实际落地（v0.2）</span>
+      <span class="tag">实际落地（v0.3）</span>
       <p>最终用 <strong>阿里云 DashScope · Qwen</strong>（OpenAI 兼容端点）——因为<strong>部署位置</strong>决定可用性：原计划的 Gemini/Groq 在国内不可达。主线用 <code>qwen-plus</code>（tool calling 可靠）；<strong>纯寒暄走 <code>qwen-flash</code> 快车道</strong>（~0.9s）做速度分级。实测：<code>qwen-flash</code> 对"推荐"类软请求会跳工具、编假型号，故产品路线必须用 plus。换模型只改 3 个 env。<strong>省钱更快的候选</strong>：<code>deepseek-v4-flash</code>（便宜、支持 tool calling、有 prompt 缓存正好治"大 prompt 每轮发两遍"）—— 但换模型前<strong>必须跑 eval 防幻觉倒退</strong>。</p>
     </div>
   </section>
@@ -635,7 +599,7 @@
       <li><strong>④ 出口链接对库校验（最硬）</strong> —— 回复发出前把每个 <code>/products/&lt;id&gt;</code> 拿去库里核，有假链接→强制重试→仍假则安全兜底。<strong>假链接绝对到不了用户</strong>，不依赖"永远堵不全"的关键词正则。</li>
       <li><strong>语言一致</strong> —— 每轮按买家语言在末尾追加强指令，防中英混排/语言跑偏。</li>
       <li><strong>防注入</strong> —— system prompt 后端注入，前端只发消息内容，只信任工具返回。</li>
-      <li><strong>无关/敏感话题不涉入</strong> —— 政治/地缘(台湾)/宗教/医疗/其他公司/编程等一律<strong>不表态、不展开</strong>，礼貌转回产品；情绪(如分手)先一句共情再温和转回。检测→固定挡回，<strong>绝不让模型自由生成敏感内容</strong>。(临时 prompt 版已生效；未来由 flash 路由 off-topic 三档更彻底。)</li>
+      <li><strong>无关/敏感话题不涉入</strong> —— 政治/地缘(台湾)/宗教/医疗/其他公司/编程等不表态、不展开，礼貌转回产品；情绪类先一句共情再温和转回。<strong>当前由 system prompt 约束，并纳入 Agent eval 回归</strong>；未来可增加 Flash 分类器 + 本地固定模板，让高风险挡回不依赖主模型自由生成。</li>
     </ul>
     <div class="callout">
       <span class="tag">诚实的局限 & 优雅方向</span>
@@ -644,27 +608,38 @@
   </section>
 
   <section id="s11">
-    <h2 class="sec"><span class="num">11</span>会话与记忆</h2>
-    <p><strong>记忆 ≠ 账号。</strong> 模型无状态,"记忆"= 每次把历史一起发过去;关联只需一个<strong>匿名会话 ID</strong>,不需要登录。</p>
+    <h2 class="sec"><span class="num">11</span>会话策略（不持久化）</h2>
+    <p>模型本身无状态。当前由 ChatWidget 在浏览器内持有 <code>messages</code>，每次请求把本次会话所需历史一起发送，因此可以理解“第一款”“它”“换成蓝色”等追问。</p>
     <ul class="tight">
-      <li>首次开聊,前端生成 UUID <code>conversationId</code> 存 localStorage,每次请求带上。</li>
-      <li>后端按 <code>conversationId</code> 存 Mongo —— 无用户,一个 id 当钥匙。</li>
-      <li><strong>漏斗</strong>:浏览时匿名 → 留 email 提交询盘那一刻,把 <code>conversationId</code> 关联到 inquiry → 业务员看到完整售前对话背景。</li>
-      <li><strong>隐私</strong>:留资前不含 PII,合规干净。</li>
+      <li><strong>不建设 conversations 集合</strong>，后端不保存完整聊天记录，也不宣称长期记忆。</li>
+      <li>刷新页面后历史可丢失，这是当前明确接受的范围取舍；它不影响产品 Tool Calling 与询盘闭环的核心面试价值。</li>
+      <li>接口中可选的 <code>conversationId</code> 当前只原样回传，可作为请求关联标识，但<strong>不用于查库、记忆或数据关联</strong>。</li>
+      <li>只有买家在 LeadCard 中确认的 <code>name / email / message</code> 才进入 inquiry；不把完整聊天文本附带落库。</li>
     </ul>
   </section>
 
   <section id="s12">
-    <h2 class="sec"><span class="num">12</span>数据模型</h2>
-    <pre><span class="kw">conversations</span> {
-  conversationId: String,   <span class="c">// 匿名,索引</span>
-  messages: [{ role, content, toolCalls?, ts }],
-  collectedLead: { name?, email?, product?, quantity?, destination? },
-  createdAt, updatedAt
-}
+    <h2 class="sec"><span class="num">12</span>数据模型与动作契约</h2>
+    <pre><span class="kw">products</span> <span class="c">// 产品工具的唯一真值源</span>
+  id / slug / code / name / category / colors / variants / specs
+  features / loadCapacity / material / moq / hot / image
 
-<span class="kw">inquiry</span> (复用现有) + 新增关联字段:
-  conversationId?: String   <span class="c">// 询盘 ← 对话</span></pre>
+<span class="kw">inquiries</span> <span class="c">// 复用现有模型，不附加聊天记录</span>
+  name, email, message, ip
+  country?, region?
+  emailed: pending | sent | failed
+  status: new | done
+  createdAt, updatedAt</pre>
+
+    <h3>当前询盘动作契约（Human-in-the-loop）</h3>
+    <pre><span class="c">// 模型回复尾部的 MVP 传输协议</span>
+```lead
+{ "name": "买家提供的姓名", "email": "买家提供的邮箱", "summary": "需求摘要" }
+```
+
+Agent 候选 action → 前端解析/校验 → LeadCard 可编辑确认
+→ POST /api/inquiries → inquiryService → MongoDB + 异步邮件</pre>
+    <p class="cap">当前 fenced <code>lead</code> 块是已落地的 MVP 协议；后续可升级为 API 响应中的结构化 <code>actions[]</code>，减少文本解析脆弱性。该升级尚未实现。</p>
   </section>
 
   <section id="s13">
@@ -673,16 +648,17 @@
       <table>
         <thead><tr><th>指标</th><th>目标</th><th>怎么测</th></tr></thead>
         <tbody>
-          <tr><td class="k">规格问答准确率</td><td>≥ 95%(数字类)</td><td>20–30 条测试集,标 pass/fail</td></tr>
-          <tr><td class="k">幻觉率(数字)</td><td>≈ 0</td><td>抽查是否只复述工具值</td></tr>
-          <tr><td class="k">越界转人工命中</td><td>≥ 90%</td><td>价格/库存类问题是否正确拒绝</td></tr>
-          <tr><td class="k">RAG 软问题命中</td><td>before/after 对比</td><td>eval 集报提升幅度</td></tr>
+          <tr><td class="k">Agent 行为回归</td><td>45 条用例全部通过</td><td><code>scripts/agent-eval.js</code> 调真实 <code>/api/chat</code>，按确定性断言出分</td></tr>
+          <tr><td class="k">产品假链接</td><td>0 条到达用户</td><td>出口对 MongoDB 真值校验；失败时重试或安全兜底</td></tr>
+          <tr><td class="k">询盘闭环</td><td>缺邮箱不出卡；有真实邮箱才出卡；确认后才落库</td><td>Agent eval + LeadCard/API 自动化测试 + 人工端到端验收</td></tr>
+          <tr><td class="k">工程回归</td><td>当前 76/76 通过</td><td>Backend 52 + Frontend 24 Vitest；GitHub Actions 自动跑 lint/test/build</td></tr>
+          <tr><td class="k">RAG 软问题命中</td><td>P5 建 baseline 后做 before/after</td><td>尚未实现，不把未来指标写成现有成绩</td></tr>
         </tbody>
       </table>
     </div>
     <div class="callout">
       <span class="tag">非玩具信号</span>
-      <p>真实动作(闭环)+ 防幻觉护栏 + <strong>一个小 eval(能报数字)</strong> + 后台对话日志 —— 都不深,但每一样都在喊"这是真系统"。</p>
+      <p>真实业务动作（买家确认后落库/邮件）+ 防幻觉护栏 + 45 条 Agent 行为回归 + 76 项工程测试 + CI，已经构成可解释、可回归的系统证据。下一步应记录正式 eval 分数、延迟、token 和工具调用轨迹，而不是为了“有记忆”去堆完整聊天落库。</p>
     </div>
   </section>
 
@@ -693,22 +669,24 @@
       <div class="phase"><div class="pn">P0</div><div><p class="pt">✅ 练手沙盒(一次性)</p><p class="pd">独立小脚本,用免费 API 让模型调用一个假工具,亲眼看懂"模型→工具→喂回→回答"循环。<em>（已完成，脚本 gitignore 不入库。）</em></p><div class="pmeta"><span class="chip learn">学:tool calling 消息格式 + 循环</span><span class="chip">~0.5 天</span></div></div></div>
       <div class="phase"><div class="pn">P1</div><div><p class="pt">✅ 基础对话</p><p class="pd">Juxin 加 /api/chat + 深色玻璃聊天气泡。<em>（已完成并浏览器实测。）</em></p><div class="pmeta"><span class="chip learn">学:前后端聊天链路</span><span class="chip">1–2 天</span></div></div></div>
       <div class="phase"><div class="pn">P2</div><div><p class="pt">✅ 接工具 · 核心 ★</p><p class="pd">LangGraph StateGraph(agent+ToolNode+条件边)把 searchProducts/getProduct 包成 tool 查库答规格。<em>（已完成端到端实测。附带做了：颜色搜、品类区分、推荐带真实链接、语言一致、简洁+flash 寒暄快车道。）</em></p><div class="pmeta"><span class="chip learn">学:tool schema · LangGraph · 循环</span><span class="chip">2–4 天</span></div></div></div>
-      <div class="phase"><div class="pn">P3</div><div><p class="pt">🟡 防幻觉 + 护栏（大部分随 P2 完成）</p><p class="pd">已实现<strong>防御纵深四道</strong>：强制 tool_choice + 工具返回瘦身 + prompt"只说工具字段" + <strong>出口链接对库校验+重试+兜底</strong>；越界(价格/交期)硬转人工。<em>剩余：eval 固化 + 考虑重构成"LLM 选 id、代码渲染真值"（详见架构讲解页）。</em></p><div class="pmeta"><span class="chip learn">学:prompt 工程 · 边界 · 防御纵深</span><span class="chip">1 天</span></div></div></div>
-      <div class="phase"><div class="pn">P4</div><div><p class="pt">记忆 + 抓询盘 · 闭环 ★</p><p class="pd">conversationId 存 Mongo;create_inquiry 工具,信息够了落结构化询盘并关联对话。</p><div class="pmeta"><span class="chip learn">学:把 Agent 接进真实业务动作</span><span class="chip">1–2 天</span></div></div></div>
-      <div class="phase"><div class="pn">P5</div><div><p class="pt">RAG + 向量库 ★</p><p class="pd">公司软信息切块 → Atlas Vector Search → 检索注入 + 小评估。(为 RAG/向量库关键词升级)</p><div class="pmeta"><span class="chip learn">学:embedding · 检索 · 评估</span><span class="chip">1–2 天</span></div></div></div>
-      <div class="phase"><div class="pn">P6</div><div><p class="pt">🟡 严肃信号（eval 已提前做）</p><p class="pd">已做：<code>scripts/agent-eval.js</code> —— <strong>35 条行为回归 eval</strong>，打 /api/chat + 确定性断言 + 出分；<strong>真值从数据库现取自推</strong>(facts)，一条命令红绿一眼见。<em>剩余：对话/工具日志接进 admin 后台。</em></p><div class="pmeta"><span class="chip learn">学:评估思维 · 可观测性</span><span class="chip">1–2 天</span></div></div></div>
-      <div class="phase"><div class="pn">P7</div><div><p class="pt">部署</p><p class="pd">免费模型 key 配到 Render 环境变量,上线。</p><div class="pmeta"><span class="chip learn">学:密钥管理 · 部署</span><span class="chip">~0.5 天</span></div></div></div>
-      <div class="phase"><div class="pn">P8</div><div><p class="pt">MCP(拉伸)</p><p class="pd">工具封装成 MCP server,agent 经协议消费。前沿加分,排最后。</p><div class="pmeta"><span class="chip learn">学:MCP 协议 · 服务解耦</span><span class="chip">1–2 天</span></div></div></div>
+      <div class="phase"><div class="pn">P3</div><div><p class="pt">✅ 防幻觉 + 护栏</p><p class="pd">已实现<strong>防御纵深四道</strong>：强制 tool_choice + 工具返回瘦身 + prompt“只说工具字段” + <strong>出口链接对库校验、重试、兜底</strong>；越界（价格/交期）转人工，相关行为进入 45 条 eval。<em>可选增强：改为“LLM 选 id、代码渲染真值”。</em></p><div class="pmeta"><span class="chip learn">学:prompt 工程 · 边界 · 防御纵深</span><span class="chip">已完成核心</span></div></div></div>
+      <div class="phase"><div class="pn">P4</div><div><p class="pt">✅ Human-in-the-loop 询盘闭环 ★</p><p class="pd">模型生成 lead 候选块 → 前端 LeadCard 可编辑 → 买家确认 → 复用 <code>/api/inquiries</code> / <code>inquiryService</code> → MongoDB 落库 + geo/邮件异步副作用。<strong>不保存完整聊天，不让模型直接执行写操作。</strong></p><div class="pmeta"><span class="chip learn">学:Agent 动作协议 · 人工确认 · 业务闭环</span><span class="chip">已完成</span></div></div></div>
+      <div class="phase"><div class="pn">P5</div><div><p class="pt">⬜ RAG + 向量库 ★</p><p class="pd">计划将公司软信息切块 → embedding → Atlas Vector Search → 检索注入，并用软问题集做 before/after。<strong>当前尚未实现。</strong></p><div class="pmeta"><span class="chip learn">学:embedding · 检索 · 评估</span><span class="chip">待做</span></div></div></div>
+      <div class="phase"><div class="pn">P6</div><div><p class="pt">🟡 评估、测试与可观测性</p><p class="pd">已做：<code>scripts/agent-eval.js</code> <strong>45 条行为回归 eval</strong>，真值从数据库现取自推；Backend 52 + Frontend 24 项 Vitest，以及 GitHub Actions lint/test/build。<em>剩余：保存正式 eval baseline，补延迟、token、工具调用与错误率观测。</em></p><div class="pmeta"><span class="chip learn">学:评估思维 · 自动化回归 · 可观测性</span><span class="chip">核心已有，观测待补</span></div></div></div>
+      <div class="phase"><div class="pn">P7</div><div><p class="pt">⬜ 部署验收</p><p class="pd">现有多阶段 Dockerfile 可构建前后端单容器；待把模型、MongoDB、OSS、邮件密钥配置到托管环境并记录线上演示与健康检查结果。</p><div class="pmeta"><span class="chip learn">学:密钥管理 · 部署 · 线上验收</span><span class="chip">待做</span></div></div></div>
+      <div class="phase"><div class="pn">P8</div><div><p class="pt">⬜ MCP（可选拉伸）</p><p class="pd">仅在核心质量、RAG 与部署完成后，再考虑将只读产品工具封装为 MCP server。不是当前完成项，也不是证明 Agent 成立的前置条件。</p><div class="pmeta"><span class="chip learn">学:MCP 协议 · 工具解耦</span><span class="chip">可选</span></div></div></div>
     </div>
   </section>
 
   <section id="s15">
     <h2 class="sec"><span class="num">15</span>技术栈与部署</h2>
     <ul class="tight">
-      <li><strong>Agent</strong> —— Node + LangGraph.js(留在 Juxin 栈内);模型经 OpenAI 兼容 SDK,可切换。</li>
-      <li><strong>向量</strong> —— MongoDB Atlas Vector Search(零新增基建)或 FAISS。</li>
-      <li><strong>封装</strong> —— Docker 多阶段;若 agent 做<strong>独立服务</strong>,则 compose 编排 frontend + backend + agent 三容器(强化"多服务编排 + MCP"故事)。</li>
-      <li><strong>部署</strong> —— Render 每服务单独部署;本地 compose 展示多服务能力即可,线上可简化。</li>
+      <li><strong>前端</strong> —— React + Vite + Tailwind；ChatWidget 持有多轮 messages，LeadCard 承担询盘确认。</li>
+      <li><strong>后端 / Agent</strong> —— Node.js + Express + LangGraph.js；Agent 作为现有后端模块运行，模型经 OpenAI-compatible SDK 接入 DashScope。</li>
+      <li><strong>数据与外部服务</strong> —— MongoDB/Mongoose 保存 products 与 inquiries；阿里云 OSS、geo、SMTP 邮件沿用现有全栈能力。Atlas Vector Search 属 P5 规划。</li>
+      <li><strong>封装</strong> —— 多阶段 Dockerfile 先构建前端，再由后端静态托管，生产形态是<strong>单个 web 容器</strong>；Compose 仅额外提供本地开发 Mongo profile。</li>
+      <li><strong>质量</strong> —— Vitest + Supertest + Testing Library + ESLint；GitHub Actions 分别执行后端 lint/test 与前端 lint/test/build。</li>
+      <li><strong>部署</strong> —— 目标是单个 Docker Web Service，外接 Atlas / OSS / DashScope / SMTP；不宣称已拆分为独立 Agent 微服务。</li>
     </ul>
   </section>
 
@@ -716,7 +694,7 @@
     <h2 class="sec"><span class="num">16</span>范围纪律(不做什么)</h2>
     <div class="callout badbox">
       <span class="tag">明确不碰 —— 超预算且易在面试翻车</span>
-      <p>多 Agent 编排 · 手写 ReAct 脚手架 / LangChain 老 AgentExecutor · 微调 / 自训 embedding · 复杂 RAG(re-rank / query 改写)· LangGraph 复杂状态机 · 正式 eval 框架。</p>
+      <p>多 Agent 编排 · 手写 ReAct 脚手架 / LangChain 老 AgentExecutor · 微调 / 自训 embedding · 复杂 RAG（re-rank / query 改写）· LangGraph 复杂状态机 · 重型 eval 平台 · 为简历故事强拆微服务。</p>
     </div>
     <p>定位是"<strong>全栈工程师把 AI 功能扎实落进真实系统</strong>",不是 Agent 研究。深度不是战场 —— 扎根 + 闭环 + 测量才是。ReAct 当概念理解即可,用原生 tool calling / LangGraph 实现。</p>
   </section>
@@ -729,16 +707,27 @@
         <tbody>
           <tr><td class="k">Tool Calling / Function Calling</td><td>P2 核心,能讲透循环</td></tr>
           <tr><td class="k">Agent 框架(LangGraph)</td><td>P2 用 LangGraph 编排 + 懂其封装本质</td></tr>
-          <tr><td class="k">RAG + 向量库</td><td>P5 Atlas Vector Search + 准确率提升</td></tr>
-          <tr><td class="k">MCP</td><td>P8 工具封装为 MCP server</td></tr>
-          <tr><td class="k">ToB 企业级 / 从零到一</td><td>真实外贸官网,稀缺加分项</td></tr>
-          <tr><td class="k">Docker 容器化</td><td>多阶段 + compose 多服务编排</td></tr>
+          <tr><td class="k">Guardrails / 防幻觉</td><td>强制工具、最小真值、链接校验、重试与安全兜底</td></tr>
+          <tr><td class="k">Human-in-the-loop</td><td>Agent 生成候选动作，买家确认后才写入 inquiry 并触发邮件</td></tr>
+          <tr><td class="k">Eval / 工程质量</td><td>45 条 Agent 行为回归 + 76 项 Vitest + CI</td></tr>
+          <tr><td class="k">RAG + 向量库</td><td>P5 计划：Atlas Vector Search + before/after；当前不冒充已完成</td></tr>
+          <tr><td class="k">MCP</td><td>P8 可选拉伸；当前不冒充已完成</td></tr>
+          <tr><td class="k">ToB 企业级 / 从零到一</td><td>真实外贸官网与可确认询盘闭环，不只停留在聊天 Demo</td></tr>
+          <tr><td class="k">Docker / CI</td><td>多阶段单容器 + 本地 Compose + GitHub Actions</td></tr>
           <tr><td class="k">Python</td><td>由其它算法 / 气候项目覆盖</td></tr>
         </tbody>
       </table>
     </div>
   </section>
 
-  <p class="foot">巨鑫外贸售前 AI 助理 · Agent PRD v0.2 · Draft · 2026-07-22 · 决策依据见对话记录,后续随开发迭代更新版本号。</p>
+  <section id="s18">
+    <h2 class="sec"><span class="num">18</span>后续强化拓展</h2>
+    <p class="sec-note">规划中的增强方向，<strong>均尚未实现</strong>，不计入当前成绩。</p>
+    <ul class="tight">
+      <li><strong>响应缓存（Redis）</strong> —— 对<strong>高频、无上下文依赖、答案稳定</strong>的问题（寒暄 / FAQ / 公司软信息）做归一化 key 的响应缓存，命中即跳过 LLM，降 API 调用与 token。<strong>不缓存</strong>多轮产品问答与任何含 PII/lead 的响应；数据变更时按 TTL/失效清理。<strong>注</strong>：降低“单次调用 token”属 provider prompt caching / 模型选型，不在本任务范围。附带可将限流从 <code>MongoStore</code> 迁至 <code>Redis</code>。<strong>指标</strong>：缓存命中率、token/成本前后对比（依赖可观测性探针）。</li>
+    </ul>
+  </section>
+
+  <p class="foot">巨鑫外贸售前 AI 助理 · Agent PRD v0.3 · Draft · 2026-07-23 · 以当前仓库实现为准，后续随开发迭代更新版本号。</p>
 
 </div>
