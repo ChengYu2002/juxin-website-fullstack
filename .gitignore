@@ -27,8 +27,10 @@ npm-debug.log*
 
 # 个人面试笔记 / 学习笔记(不入库)
 docker-interview-notes.md
+docs/agent-interview-note.html
 *.notes.md
 notes/
 
 # P0 练手沙盒(一次性,不入库)
 scripts/agent-sandbox.js
+scripts/eval-baseline.json

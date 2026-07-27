@@ -7,7 +7,12 @@
  *
  * 用法：先起容器 (./scripts/docker-up.sh)，然后：
  *   node scripts/agent-eval.js
- *   BASE=http://localhost:3001 DELAY=800 node scripts/agent-eval.js   # 可调
+ *   BASE=http://localhost:3001 DELAY=800 node scripts/agent-eval.js       # 可调
+ *   NOTE="C4/J2修复后" node scripts/agent-eval.js                          # 给本轮打标签
+ *
+ * 输出：末尾打印一版「指标基线」(通过率/规格准确率/硬幻觉率/平均时延)，并把这一轮
+ *       追加到 scripts/eval-baseline.json（每跑一次多一行，便于跨轮对比优化效果）。
+ *       ⚠️ 时延受 DashScope 限流影响，跨轮比较需同等负载条件才有意义。
  *
  * 设计要点：
  *   - 真值不硬编：facts 断言从 /api/products 现取该产品的真实字段推断"回复该含什么"，
@@ -20,6 +25,19 @@
 const BASE = process.env.BASE || 'http://localhost:3001'
 const DELAY = Number(process.env.DELAY || 600) // 每条之间等待(ms)，防限流突发
 const TIMEOUT = Number(process.env.TIMEOUT || 60000)
+const NOTE = process.env.NOTE || '' // 给本轮基线打标签，如 NOTE="C4/J2修复后"
+
+const fs = require('fs')
+const path = require('path')
+const { execSync } = require('child_process')
+const round3 = (x) => (x == null ? null : Math.round(x * 1000) / 1000)
+const gitRef = () => {
+  try {
+    return execSync('git rev-parse --short HEAD', { cwd: __dirname }).toString().trim()
+  } catch {
+    return 'unknown'
+  }
+}
 
 // —— 小工具 ——
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
@@ -264,6 +282,17 @@ async function run() {
   let fail = 0
   let err = 0
   const fails = []
+  const reqLatencies = [] // 每次 /api/chat 请求墙钟耗时(ms)
+  const checkResults = [] // 每个断言 {t:类型, ok} —— 算规格准确率/幻觉率
+  const byGroup = {} // 分组通过统计
+
+  // 计时包装：每次请求记一次耗时
+  const timedPost = async (msgs) => {
+    const t0 = Date.now()
+    const r = await postChat(msgs)
+    reqLatencies.push(Date.now() - t0)
+    return r
+  }
 
   for (const c of cases) {
     const messages = c.turns ? [] : [{ role: 'user', content: c.input }]
@@ -272,11 +301,11 @@ async function run() {
       if (c.turns) {
         for (const u of c.turns) {
           messages.push({ role: 'user', content: u })
-          reply = await postChat(messages)
+          reply = await timedPost(messages)
           messages.push({ role: 'assistant', content: reply })
         }
       } else {
-        reply = await postChat(messages)
+        reply = await timedPost(messages)
       }
     } catch (e) {
       err++
@@ -297,15 +326,19 @@ async function run() {
         : ck.t === 'loadCap' ? ck
         : ck.v
       const r = CHECKS[ck.t](reply, arg, ctx)
+      checkResults.push({ t: ck.t, ok: r === true })
       if (r !== true) problems.push(`${ck.t}: ${r}`)
     }
 
+    byGroup[c.g] = byGroup[c.g] || { pass: 0, total: 0 }
+    byGroup[c.g].total++
     if (problems.length) {
       fail++
       fails.push({ id: c.id, g: c.g, problems, reply })
       console.log(`✗ [${c.g}] ${c.id}`)
     } else {
       pass++
+      byGroup[c.g].pass++
       console.log(`✓ [${c.g}] ${c.id}`)
     }
     await sleep(DELAY)
@@ -321,8 +354,54 @@ async function run() {
     }
   }
 
-  console.log(`\n──── 总分 ────`)
-  console.log(`  通过 ${pass} / ${cases.length}   失败 ${fail}   出错(超时/限流) ${err}`)
+  // —— 指标基线 ——
+  const ran = pass + fail // 真正跑完的(不含请求出错的)
+  const passRate = ran ? pass / ran : null
+  const ACC = new Set(['facts', 'loadCap']) // "复述真值"类 = 规格准确率
+  const HALLU = new Set(['noFakeLink', 'saysNotFound', 'notContains']) // "防编造"类 = 硬幻觉
+  const accAll = checkResults.filter((c) => ACC.has(c.t))
+  const halAll = checkResults.filter((c) => HALLU.has(c.t))
+  const factsAccuracy = accAll.length ? accAll.filter((c) => c.ok).length / accAll.length : null
+  const hallucinationRate = halAll.length ? halAll.filter((c) => !c.ok).length / halAll.length : null
+  const avgLatencyMs = reqLatencies.length
+    ? Math.round(reqLatencies.reduce((a, b) => a + b, 0) / reqLatencies.length)
+    : null
+  const pct = (x) => (x == null ? '—' : (x * 100).toFixed(1) + '%')
+
+  console.log(`\n──── 指标基线 ────`)
+  console.log(`  通过率        ${pct(passRate)}  (${pass}/${ran})`)
+  console.log(`  规格准确率    ${pct(factsAccuracy)}  (facts/loadCap · ${accAll.length} 条断言)`)
+  console.log(`  硬幻觉率      ${pct(hallucinationRate)}  (假链接/编造失败 · ${halAll.length} 条断言)`)
+  console.log(`  平均时延      ${avgLatencyMs == null ? '—' : avgLatencyMs + 'ms'}  (每请求 · ⚠️ 受限流影响)`)
+  console.log(`  出错(超时/限流) ${err}`)
+  console.log(`  分组通过:     ${Object.entries(byGroup).map(([g, s]) => `${g} ${s.pass}/${s.total}`).join(' · ')}`)
+
+  // —— 追加到基线历史(每轮一行，跨轮对比) ——
+  const row = {
+    ts: new Date().toISOString(),
+    git: gitRef(),
+    note: NOTE,
+    cases: ran,
+    pass,
+    fail,
+    err,
+    passRate: round3(passRate),
+    factsAccuracy: round3(factsAccuracy),
+    hallucinationRate: round3(hallucinationRate),
+    avgLatencyMs,
+    byGroup: Object.fromEntries(Object.entries(byGroup).map(([g, s]) => [g, `${s.pass}/${s.total}`])),
+  }
+  const outPath = path.join(__dirname, 'eval-baseline.json')
+  let hist = []
+  try {
+    hist = JSON.parse(fs.readFileSync(outPath, 'utf8'))
+  } catch {
+    hist = []
+  }
+  hist.push(row)
+  fs.writeFileSync(outPath, JSON.stringify(hist, null, 2) + '\n')
+  console.log(`\n  ✎ 已追加基线 → scripts/eval-baseline.json (累计 ${hist.length} 轮)${NOTE ? ' · 标签: ' + NOTE : ''}`)
+
   process.exit(fail > 0 ? 1 : 0)
 }
 
