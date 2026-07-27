@@ -80,6 +80,7 @@ function shouldContinue(state) {
 }
 
 // 构建LangGraph StateGraph：START → agent → (有tool_calls? → tools → agent) → END
+// 核心代码
 const workflow = new StateGraph(MessagesAnnotation)
   .addNode('agent', agentNode)
   .addNode('tools', toolNode)
